@@ -6,8 +6,6 @@ It includes tools for data collection, NLP analysis, and visualization.
 - [🌐 Launch Webapp](https://huggingface.co/spaces/crc-sprout/ClimateLens)  
 - [📖 Learn More](https://crc.place/climatelens/)
 
----
-
 ## 📂 Project Structure
 ├── data/ # sample datasets
 ├── src/ # source code
