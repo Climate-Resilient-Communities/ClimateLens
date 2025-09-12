@@ -5,3 +5,6 @@ mkdocs
 pip
 python-dotenv
 -e .
+bertopic
+pandas
+numpy
