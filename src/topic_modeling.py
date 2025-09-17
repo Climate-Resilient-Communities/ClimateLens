@@ -1,18 +1,18 @@
 import os
 import pandas as pd
 
+
+def load_datasets(data_path, prefix, datasets):
+    for file in os.listdir(data_path):
+        file_path = os.path.join(data_path, file)
+        
+        if os.path.isfile(file_path):
+            file_name = file.replace(prefix, "").replace(".csv", "")
+            datasets[file_name] = file_path
+
 datasets = {}
-
-data_path = "../parasjamil/filtered_reddit_output/"
-for file in os.listdir(data_path):
-    file_path = os.path.join(data_path, file)
-
-    if os.path.isfile(file_path):
-        file_name = file.replace("filtered_", "").replace(".csv","")
-
-        datasets[file_name] = file_path
-
-#datasets["twitter"] = "../parasjamil/climate_twitter_clean.csv"
+load_datasets("../parasjamil/filtered_reddit_output/", "filtered_", datasets)
+load_datasets("../parasjamil/cleaned_twitter_data/", "clean_", datasets)
 
 print("Collected Datasets:")
 for key, value in datasets.items():
