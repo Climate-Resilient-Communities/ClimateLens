@@ -1,62 +1,61 @@
-# khp-climate-anxiety
+# 🌍 ClimateLens
 
-<a target="_blank" href="https://cookiecutter-data-science.drivendata.org/">
-    <img src="https://img.shields.io/badge/CCDS-Project%20template-328F97?logo=cookiecutter" />
-</a>
+ClimateLens is an open-source research project dedicated to understanding and addressing climate anxiety among young people. Our goal is to identify how climate anxiety manifests in youth and to develop a reproducible, reusable, and interpretable detection model for early intervention. By analyzing language patterns and expressions linked to climate anxiety, the project uncovers common themes and concerns, offering insights into how youth experience and cope with this growing issue.
 
-Detection of topics related to climate anxiety in youth
+- [🌐 Launch Webapp](https://huggingface.co/spaces/crc-sprout/ClimateLens)  
+- [📖 Learn More](https://crc.place/climatelens/)
 
-## Project Organization
+## Problem Statement
 
+Climate change is a significant source of anxiety. Despite its increasing prevalence, there is limited understanding of how climate anxiety manifests and few tools exist for early detection and intervention. Without timely support, these anxieties can escalate, worsening mental health outcomes and reducing overall well-being.
+
+We hypothesize that by analyzing language for recurring themes and expressions, and developing an NLP/LLM-based model to detect climate anxiety, we can deliver actionable insights that guide timely interventions.
+
+This project will:
++ Reveal how climate anxiety manifests in youth language.
++ Develop a practical, reusable detection tool.
++ Ensure scalability and openness through public datasets.
++ Provide an interactive platform for applying and visualizing results.
+
+## Impact
+By enabling early detection, ClimateLens empowers support networks and mental health professionals to act proactively. Our ultimate goals are to:
++ Strengthen youth resilience.
++ Foster a sense of agency.
++ Transform climate-related fears into constructive engagement.
+
+## ✨ Features
+- **Data Collection** – tools for gathering and cleaning social media datasets.  
+- **NLP Models** – topic modeling and classification for detecting climate-related emotions.  
+- **Visualization** – interactive graphics and dashboards.  
+- **WebApp** – HuggingFace Space.  
+
+## 🔐 Required Environment Variables
 ```
-├── LICENSE            <- Open-source license if one is chosen
-├── Makefile           <- Makefile with convenience commands like `make data` or `make train`
-├── README.md          <- The top-level README for developers using this project.
-├── data
-│   ├── external       <- Data from third party sources.
-│   ├── interim        <- Intermediate data that has been transformed.
-│   ├── processed      <- The final, canonical data sets for modeling.
-│   └── raw            <- The original, immutable data dump.
-│
-├── docs               <- A default mkdocs project; see mkdocs.org for details
-│
-├── models             <- Trained and serialized models, model predictions, or model summaries
-│
-├── notebooks          <- Jupyter notebooks. Naming convention is a number (for ordering),
-│                         the creator's initials, and a short `-` delimited description, e.g.
-│                         `1.0-jqp-initial-data-exploration`.
-│
-├── pyproject.toml     <- Project configuration file with package metadata for khp_climate_anxiety
-│                         and configuration for tools like black
-│
-├── references         <- Data dictionaries, manuals, and all other explanatory materials.
-│
-├── reports            <- Generated analysis as HTML, PDF, LaTeX, etc.
-│   └── figures        <- Generated graphics and figures to be used in reporting
-│
-├── requirements.txt   <- The requirements file for reproducing the analysis environment, e.g.
-│                         generated with `pip freeze > requirements.txt`
-│
-├── setup.cfg          <- Configuration file for flake8
-│
-└── khp_climate_anxiety                <- Source code for use in this project.
-    │
-    ├── __init__.py    <- Makes khp_climate_anxiety a Python module
-    │
-    ├── data           <- Scripts to download or generate data
-    │   └── make_dataset.py
-    │
-    ├── features       <- Scripts to turn raw data into features for modeling
-    │   └── build_features.py
-    │
-    ├── models         <- Scripts to train models and then use trained models to make
-    │   │                 predictions
-    │   ├── predict_model.py
-    │   └── train_model.py
-    │
-    └── visualization  <- Scripts to create exploratory and results oriented visualizations
-        └── visualize.py
+# Cohere
+COHERE_API_KEY=your_cohere_key
 ```
 
---------
+## 📂 Project Structure
+```
+├── data/                 # sample datasets
+│
+├── src/
+│   ├── LDA/              # LDA model (baseline only)
+│   ├── models/           # pipelines and ML models
+│   ├── utils/            # shared utilities
+│   └── notebooks/        # exploratory/archived notebooks
+│
+├── LICENSE
+├── Makefile
+├── requirements.txt
+└── README.md
+```
 
+## 🌐 WebApp
+The production app is deployed on HuggingFace Spaces using Streamlit. All visualizations and explanations are present in the app.
+
+## 🤝 Contributing
+This is an organization-only project.
+
+## License
+This project is licensed under the MIT License – see the LICENSE file for details.

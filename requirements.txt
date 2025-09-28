@@ -1,7 +1,29 @@
-black
-flake8
-isort
-mkdocs
-pip
-python-dotenv
--e .
+### ML & NLP
+scikit-learn==1.5.1  # stopwords
+torch==2.3.1         # needed for bertopic
+sentence-transformers==3.0.1 # Models for embedding sentences into vectors
+umap-learn==0.5.6    # Non-linear dimensionality reduction for visualizations
+hdbscan==0.8.38.post1 # Density-based clustering algorithm
+bertopic==0.16.4     # Topic modeling using transformers-based embeddings
+mlflow==2.14.3       # Model tracking, packaging, and deployment
+
+### Data Manipulation
+
+numpy==1.26.4        # Array processing and linear algebra
+pandas==2.2.2        # Data manipulation and analysis
+
+### Data Visualization
+
+# Interactive plotting and visualizations
+plotly==5.23.0       # Visualization library for creating interactive plots
+kaleido==0.2.1       # For saving plots as PNG, PDF, etc.
+
+### Code Quality & Formatting
+black                # Auto-formatting Python code
+flake8               # Linting and style guide enforcement
+isort                # Sorting imports alphabetically
+mkdocs               # Static site generator for project documentation
+python-dotenv        # Manage environment variables from .env files
+
+### Development Setup
+-e .                 # Editable install for local development
