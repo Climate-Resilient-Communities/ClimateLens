@@ -1,8 +1,9 @@
-import os
-import pandas as pd
-import json
 import csv
+import json
+import os
 from pathlib import Path
+
+import pandas as pd
 
 search_terms = [
   "climate change", "global warming",

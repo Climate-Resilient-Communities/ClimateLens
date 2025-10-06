@@ -1,6 +1,6 @@
 ### ML & NLP
 scikit-learn==1.5.1  # stopwords
-torch==2.3.1         # needed for bertopic
+torch==2.2.2         # needed for bertopic
 sentence-transformers==3.0.1 # Models for embedding sentences into vectors
 umap-learn==0.5.6    # Non-linear dimensionality reduction for visualizations
 hdbscan==0.8.38.post1 # Density-based clustering algorithm

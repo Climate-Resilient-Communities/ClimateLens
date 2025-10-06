@@ -1,12 +1,17 @@
 import nltk
+
 nltk.download('stopwords')
 nltk.download('punkt_tab')
 nltk.download('punkt')
+import os
+import re
+import string
+
+import pandas as pd
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from nltk.util import ngrams
-import string, re, os
-import pandas as pd
+
 
 def load_datasets(data_path, prefix, datasets):
     for file in os.listdir(data_path):
