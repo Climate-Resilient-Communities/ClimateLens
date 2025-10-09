@@ -1,36 +1,55 @@
 import os
+from dotenv import load_dotenv
+from pathlib import Path
 
-import matplotlib
-import matplotlib.pyplot as plt
+from google.colab import drive
+drive.mount('/content/drive')
+
+env_path = '.'
+
+#load_dotenv('.env') #manually uploaded in current dir:
+load_dotenv(env_path) #for colab
+
+data_dir = os.getenv("DATA_DIR")
+code_dir = os.getenv("CODE_DIR")
+print('Token(s) loaded:', bool(data_dir), bool(code_dir))
+
 import numpy as np
 import pandas as pd
-import seaborn as sns
-import torch
 from tqdm import tqdm
+import torch
 from transformers import pipeline
+import matplotlib
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 paths = {
-    "home": "...", # root path, where this file is
-    "models": "...", #path for models
-    "insights": "...", # static
-    "interactives": "...",
+    "emotions": code_dir / "visualizations" / "emotions",
+    "sentiments": code_dir / "visualizations" / "sentiments",
 }
 
-os.makedirs(paths.get("models"), exist_ok=True)
-os.makedirs(paths.get("insights"), exist_ok=True)
-os.makedirs(paths.get("interactives"), exist_ok=True)
+os.makedirs(paths.get("emotions"), exist_ok=True)
+os.makedirs(paths.get("sentiments"), exist_ok=True)
 
-def load_datasets(data_path, prefix, datasets):
+emotion_dir=paths.get("emotions")
+sentiment_dir=paths.get("sentiments")
+
+def load_datasets(data_path, datasets):
     for file in os.listdir(data_path):
         file_path = os.path.join(data_path, file)
-        
+
         if os.path.isfile(file_path):
-            file_name = file.replace(prefix, "").replace(".csv", "")
+            if '_filtered' in file:
+                file_name = file.replace("_filtered", "").replace(".csv", "")
+            elif "_clean" in file:
+                file_name = file.replace("_clean", "").replace(".csv", "")
+            else:
+                file_name = file.replace(".csv", "")
+
             datasets[file_name] = file_path
 
 datasets = {}
-load_datasets("...", "filtered_", datasets)
-load_datasets("...", "clean_", datasets)
+load_datasets(data_dir, datasets)
 
 print("Collected Datasets:")
 for key, value in datasets.items():
@@ -69,16 +88,19 @@ print(f"{len(list(dfs.keys()))} Dataframes collected")
 
 """## **Sentiment & Emotion Analysis**"""
 
-"""
-- ***j-hartmann/emotion-english-distilroberta-base*** - A model fine-tuned for emotion recognition in English text.
-- ***bhadresh-savani/bert-base-go-emotion*** - Another popular model trained on the GoEmotions dataset from Google, which includes 27 emotion labels.
-"""
+sentiment_model = 'finiteautomata/bertweet-base-sentiment-analysis'
+sentiment_analyzer = pipeline("text-classification", model=sentiment_model) #tweet
 
-model_name = 'finiteautomata/bertweet-base-sentiment-analysis'
-sentiment_analyzer = pipeline("text-classification", model=model_name)
+emotion_model = 'SamLowe/roberta-base-go_emotions' # Reddit
+emotion_analyzer = pipeline("text-classification", model=emotion_model)
 
-model_name = 'SamLowe/roberta-base-go_emotions'
-emotion_analyzer = pipeline("text-classification", model=model_name)
+emotion_model2 = pipeline(
+    "text-classification",
+    model="cirimus/modernbert-base-go-emotions",
+    return_all_scores=True
+) #reddit
+
+emotion_model3 = pipeline("text-classification", model="boltuix/bert-emotion") #twitter
 
 def sentiment_analysis(df, text_col, batch_size=128):
     if text_col not in df.columns:
@@ -144,9 +166,41 @@ for name, df in dfs.items():
 
     df.to_csv(datasets[name], index=False)
 
-"""# **Sentiment Distribution in Generated Texts**
-- Neutral sentiment texts are more frequent than negative sentiment texts.
-- Negative sentiment texts are more frequent than positive sentiment texts.
+import traceback
+
+for name, df in dfs.items():
+  print("\n"+"="*50)
+  print(f'Computing {name}')
+  print("="*50)
+
+  text_col = 'body' if 'body' in df.columns else 'text'
+
+    if 'emotion' not in df.columns:
+        df['emotion'] = None
+    if 'sentiment' not in df.columns:
+        df['sentiment'] = None
+
+    non_null_idx = df[df[text_col].notna()].index
+
+    subset_df = df.loc[non_null_idx]
+    subset_df = sentiment_analysis(subset_df, text_col=text_col)
+    subset_df = emotion_analysis(subset_df, text_col=text_col)
+
+    df.loc[non_null_idx, 'sentiment_label'] = subset_df['sentiment_label']
+    df.loc[non_null_idx, 'sentiment_proba'] = subset_df['sentiment_proba']
+    df.loc[non_null_idx, 'emotion_label'] = subset_df['emotion_label']
+    df.loc[non_null_idx, 'emotion_proba'] = subset_df['emotion_proba']
+
+    df.to_csv(datasets[name], index=False)
+
+"""# Emotion Visualizations"""
+
+
+
+"""# **Sentiment Visualizations**
+1. Distribution in Generated Texts
+2. Sentiment Probability Histograms
+3. Sentiment Probability Violin Plots
 """
 
 import matplotlib
@@ -197,10 +251,7 @@ plt.close()
 
 print(f"Combined visualization saved to: {combined_path}")
 
-"""# **Sentiment Probability Distribution by Sentiment Label**
-- Positive sentiment texts are labeled with greater certainty than negative sentiment texts.
-- Negative sentiment texts are labeled with greater certainty than neutral sentiment texts.
-"""
+"""## **Sentiment Probability Distribution by Sentiment Label**"""
 
 save_dir=sent_vio
 

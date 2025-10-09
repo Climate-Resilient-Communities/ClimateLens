@@ -1,24 +1,40 @@
 import os
 import pandas as pd
+from dotenv import load_dotenv
+from pathlib import Path
 
+from google.colab import drive
+drive.mount('/content/drive')
 
-def load_datasets(data_path, prefix, datasets):
+env_path = '.'
+
+#load_dotenv('.env') #manually uploaded in current dir:
+load_dotenv(env_path) #for colab
+
+data_dir = os.getenv("DATA_DIR")
+code_dir = os.getenv("CODE_DIR")
+print('Token(s) loaded:', bool(data_dir), bool(code_dir))
+
+def load_datasets(data_path, datasets):
     for file in os.listdir(data_path):
         file_path = os.path.join(data_path, file)
 
         if os.path.isfile(file_path):
-            file_name = file.replace(prefix, "").replace(".csv", "")
+            if '_filtered' in file:
+                file_name = file.replace("_filtered", "").replace(".csv", "")
+            elif "_clean" in file:
+                file_name = file.replace("_clean", "").replace(".csv", "")
+            else:
+                file_name = file.replace(".csv", "")
+
             datasets[file_name] = file_path
 
-
 datasets = {}
-load_datasets("data", "filtered_", datasets)
-load_datasets("data", "climate_", datasets)
+load_datasets(data_dir, datasets)
 
 print("Collected Datasets:")
 for key, value in datasets.items():
     print(f'{key}: {value}\n')
-
 
 def loading_datasets(datasets):
     dfs = {}
@@ -48,32 +64,32 @@ def loading_datasets(datasets):
 
     return dfs, docs_dict
 
-
-dfs, docs_dict = loading_datasets(datasets)
+dfs, docs_dict = loading_datasets(datasets) # datafames aren't standalone variables
 print(f"{len(list(dfs.keys()))} Dataframes collected")
 
-
-import time
-
 paths = {
-    "home": ".",
-    "models": "./models",
-    "insights": "./insights",
-    "interactives": "./interactives",
+    "models": Path(code_dir) / "models",
+    "IDM": Path(code_dir) / "visualizations" / "IDM",
+    "heirarchies": Path(code_dir) / "visualizations" / "heirarchies",
+    "barcharts": Path(code_dir) / "visualizations" / "barcharts",
 }
 
 os.makedirs(paths.get("models"), exist_ok=True)
-os.makedirs(paths.get("insights"), exist_ok=True)
-os.makedirs(paths.get("interactives"), exist_ok=True)
+os.makedirs(paths.get("IDM"), exist_ok=True)
+os.makedirs(paths.get("heirarchies"), exist_ok=True)
+os.makedirs(paths.get("barcharts"), exist_ok=True)
+
+IDM_dir=paths.get("IDM")
+heirarchy_dir=paths.get("heirarchies")
+barchart_dir=paths.get("barcharts")
+model_dir=paths.get("models")
 
 import warnings
-
 warnings.filterwarnings("ignore")
 
 ### modeling
 from bertopic import BERTopic
 from bertopic.representation import MaximalMarginalRelevance
-
 from sklearn.feature_extraction.text import CountVectorizer, ENGLISH_STOP_WORDS
 from sentence_transformers import SentenceTransformer
 from umap import UMAP
@@ -83,20 +99,21 @@ from hdbscan import HDBSCAN
 
 """# Topic Modeling"""
 
-topic_models = {}
-topics_dict = {}
-probs_dict = {}
-topic_info_dict = {}
-core_topics_dict = {}
+topic_models = {} # 'name': 'topic model'
+topics_dict = {} # 'name' : 'topics'
+probs_dict = {} # 'name' : 'probs'
+topic_info_dict = {} # 'name' : 'topic information' .get_topic_info()
+core_topics_dict = {} # 'name' : 'processed core topics'
 
 embedding_model_name = "sentence-transformers/all-MiniLM-L12-v2"
 embedding_model = SentenceTransformer(embedding_model_name)
 embeddings_dict = {}
-for name, docs in docs_dict.items():
+for name, docs in docs_dict.items(): #pre-calculating embeddings
     print(f'Computing {name} embeddings:\n')
     embeddings_dict[name] = embedding_model.encode(docs, show_progress_bar=True)
     print('\n')
 
+import time
 
 def bert_model(dataset_name, min_df, max_df, n_neighbors, min_cluster_size, min_topic_size):
     vectorizer_model = CountVectorizer(
@@ -118,6 +135,7 @@ def bert_model(dataset_name, min_df, max_df, n_neighbors, min_cluster_size, min_
         metric='euclidean',
         prediction_data=True
     )
+
     # Create MMR model
     mmr_model = MaximalMarginalRelevance(diversity=0.1)
 
@@ -153,6 +171,7 @@ def bert_model(dataset_name, min_df, max_df, n_neighbors, min_cluster_size, min_
     # Using MMR only until Cohere integration is fixed
     representation_model = mmr_model
     print(f"Using MMR for {dataset_name}")
+
     topic_model = BERTopic(
         embedding_model=embedding_model,
         umap_model=umap_model,
@@ -182,9 +201,7 @@ def bert_model(dataset_name, min_df, max_df, n_neighbors, min_cluster_size, min_
         elapsed_time = (end_time - start_time) / 3600
         print(f"{dataset_name} topic modeling completed in {elapsed_time:.3f} hours using {embedding_model_name}")
 
-
 from IPython.display import display
-
 
 def annotate_data(name):
     dfs[name]['topic'] = topics_dict[name]
@@ -194,8 +211,7 @@ def annotate_data(name):
     display(dfs[name].sample(n=min(3, len(dfs[name]))))
 
     print(f'\nNumber of topics (including outlier): {len(topic_info_dict[name])}\n')
-    display(topic_info_dict[name].sample(n=min(4, len(topic_info_dict[name]))))
-
+    display(topic_info_dict[name].sample(n=min(4, len(topic_info_dict[name])))) #uncomment if in jupyter notebook
 
 def process_topic_merges(name, topic_col='topic', repr_docs_col='Representative_Docs'):
     df = dfs[name].merge(
@@ -212,7 +228,6 @@ def process_topic_merges(name, topic_col='topic', repr_docs_col='Representative_
     )
     return df
 
-
 def process_core_topics(name, core_topics):
     dfs[name]['core_topic'] = topics_dict[name]
     dfs[name]['core_topic_proba'] = probs_dict[name]
@@ -224,33 +239,29 @@ def process_core_topics(name, core_topics):
     })
 
     dfs[name] = dfs[name].merge(
-        core_topics[['Topic', 'Name_core', 'Representation_core', 'Representative_Docs_core']],
+        core_topics[['Topic', 'Name_core','Representation_core','Representative_Docs_core']],
         left_on='core_topic',
         right_on='Topic',
         how='left'
     )
     del dfs[name]['Topic']
     dfs[name]['is_representative_core'] = dfs[name].apply(
-        lambda row: 1 if isinstance(row['Representative_Docs_core'], list) and row['cleaned_text'] in row[
-            'Representative_Docs_core'] else 0,
+        lambda row: 1 if isinstance(row['Representative_Docs_core'], list) and row['cleaned_text'] in row['Representative_Docs_core'] else 0,
         axis=1
     )
 
     return core_topics
 
-
 def visualize_model(name):
     topic_model = topic_models[name]
     print(f"\nVisuals for {name}:\n")
 
-    figure_hierarchy = topic_model.visualize_hierarchy()
-    figure_topics = topic_model.visualize_topics()
-    figure_barchart = topic_model.visualize_barchart(top_n_topics=10, n_words=10)
-    figure_heatmap = topic_model.visualize_heatmap(n_clusters=int(len(topic_info_dict[name])) - 2)
+    figure_hierarchy=topic_model.visualize_hierarchy()
+    figure_topics=topic_model.visualize_topics()
+    figure_barchart=topic_model.visualize_barchart(top_n_topics=10, n_words=10)
 
     display(figure_topics)
     display(figure_barchart)
-
 
 def update_model(name, save=True):
     topic_model = topic_models[name]
@@ -258,38 +269,34 @@ def update_model(name, save=True):
     topic_model_clustered = topic_model.reduce_topics(docs_dict[name], nr_topics=30)
     print(f'New topics:\n{topic_model_clustered.topics_}')
 
-    topic_model_clustered.update_topics(docs_dict[name], n_gram_range=(3, 5))
+    topic_model_clustered.update_topics(docs_dict[name], n_gram_range=(3,5))
 
-    core_topics = topic_model_clustered.get_topic_info()
+    core_topics = topic_model_clustered.get_topic_info() # remove this and add core_topics_dict={}
     core_topics = process_core_topics(name, core_topics)
     core_topics_dict[name] = core_topics
 
-    figure_hierarchy = topic_model_clustered.visualize_hierarchy()
-    figure_topics = topic_model_clustered.visualize_topics()
-    figure_barchart = topic_model_clustered.visualize_barchart(top_n_topics=len(core_topics), n_words=10)
-    figure_heatmap = topic_model_clustered.visualize_heatmap(n_clusters=int(len(core_topics)) - 2)
+    figure_hierarchy=topic_model_clustered.visualize_hierarchy()
+    figure_topics=topic_model_clustered.visualize_topics()
+    figure_barchart=topic_model_clustered.visualize_barchart(top_n_topics=len(core_topics), n_words=10)
 
-    visuals_path = paths.get("interactives")
-    if save == True:
-        figure_hierarchy.write_html(os.path.join(visuals_path, f"{name}hierarchy.html"))
-        figure_topics.write_html(os.path.join(visuals_path, f"{name}topic_distance.html"))
-        figure_barchart.write_html(os.path.join(visuals_path, f"{name}barchart.html"))
-        figure_heatmap.write_html(os.path.join(visuals_path, f"{name}heatmap.html"))
+    if save==True:
+      figure_hierarchy.write_html(os.path.join(heirarchy_dir, f"{name}HRC.html"))
+      figure_topics.write_html(os.path.join(IDM_dir, f"{name}IDM.html"))
+      figure_barchart.write_html(os.path.join(barchart_dir, f"{name}BRC.html"))
 
     return topic_model_clustered
 
-
 def save_and_reload_model(name):
-    joined_path = os.path.join(paths.get("models"), f"{name}.safetensors")
+    joined_path = os.path.join(model_dir, f"{name}.safetensors")
     topic_models[name].save(joined_path, serialization="safetensors")
-
+    #return BERTopic.load(save_path) # immediately reload
 
 import traceback
 
 for name in list(docs_dict.keys()):
-    print("\n" + "=" * 50)
+    print("\n" + "="*50)
     print(f"Starting Topic Modeling for: {name}")
-    print("=" * 50)
+    print("="*50)
 
     try:
         if name == 'twitter':
@@ -311,7 +318,7 @@ for name in list(docs_dict.keys()):
         annotate_data(name)
         process_topic_merges(name)
 
-        n_topics = len(topic_model.get_topic_info()) - 1
+        n_topics = len(topic_model.get_topic_info()) - 1  #exclude outlier
         if n_topics > 30:
             print(f"Updating {name} model...")
             update_model(name)
