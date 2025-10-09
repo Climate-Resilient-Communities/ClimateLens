@@ -15,8 +15,11 @@ pandas==2.2.2        # Data manipulation and analysis
 ### Data Visualization
 
 # Interactive plotting and visualizations
+matplotlib==3.10.0
+seaborn==0.13.2
 plotly==5.23.0       # Visualization library for creating interactive plots
 kaleido==0.2.1       # For saving plots as PNG, PDF, etc.
+tqdm==4.67.1         # Progress bars
 
 ### Code Quality & Formatting
 black                # Auto-formatting Python code

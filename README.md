@@ -33,7 +33,11 @@ By enabling early detection, ClimateLens empowers support networks and mental he
 ```
 # Cohere
 COHERE_API_KEY=your_cohere_key
+DATA_DIR=your_data_directory_here
+CODE_DIR=your_code_directory_here
 ```
+
+Moreover, `topic_modeling.py` and `emotion_classification.py` both also require a manual entry for the .env file.
 
 ## 📂 Project Structure
 ```
