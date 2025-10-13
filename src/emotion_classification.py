@@ -1,19 +1,10 @@
-import os
-from dotenv import load_dotenv
-from pathlib import Path
-
 from google.colab import drive
 drive.mount('/content/drive')
 
-env_path = '.'
-
-#load_dotenv('.env') #manually uploaded in current dir:
-load_dotenv(env_path) #for colab
-
-data_dir = os.getenv("DATA_DIR")
-code_dir = os.getenv("CODE_DIR")
-print('Token(s) loaded:', bool(data_dir), bool(code_dir))
-
+import os
+import re
+from dotenv import load_dotenv
+from pathlib import Path
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
@@ -23,84 +14,89 @@ import matplotlib
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-paths = {
-    "emotions": code_dir / "visualizations" / "emotions",
-    "sentiments": code_dir / "visualizations" / "sentiments",
-}
+env_path = '.'
+load_dotenv(env_path) #for colab
+#load_dotenv('.env')
 
-os.makedirs(paths.get("emotions"), exist_ok=True)
-os.makedirs(paths.get("sentiments"), exist_ok=True)
+data_dir = os.getenv("DATA_DIR")
+code_dir = os.getenv("CODE_DIR")
+print('Token(s) loaded:', bool(data_dir), bool(code_dir))
 
-emotion_dir=paths.get("emotions")
-sentiment_dir=paths.get("sentiments")
+def process_datasets(data_path):
+    datasets = {}
+    dfs = {}
+    docs_dict = {}
+    failed = []
 
-def load_datasets(data_path, datasets):
     for file in os.listdir(data_path):
         file_path = os.path.join(data_path, file)
 
-        if os.path.isfile(file_path):
-            if '_filtered' in file:
-                file_name = file.replace("_filtered", "").replace(".csv", "")
-            elif "_clean" in file:
-                file_name = file.replace("_clean", "").replace(".csv", "")
-            else:
-                file_name = file.replace(".csv", "")
-
+        if os.path.isfile(file_path) and file.endswith(".csv"):
+            file_name = re.sub(r"(_clean|filtered_)?\.csv$", "", file)
             datasets[file_name] = file_path
-
-datasets = {}
-load_datasets(data_dir, datasets)
-
-print("Collected Datasets:")
-for key, value in datasets.items():
-    print(f'{key}: {value}\n')
-
-def loading_datasets(datasets):
-    dfs = {}
-    docs_dict = {}
 
     for name, path in datasets.items():
         try:
             df = pd.read_csv(path)
         except Exception as e:
             print(f"Error reading {path}: {e}")
+            failed.append(name)
             continue
 
-        if "body" in df.columns:
-            text_col = "body"
-        elif "text" in df.columns:
-            text_col = "text"
-        else:
+        text_col = next((col for col in ['body', 'text'] if col in df.columns), None)
+
+        if text_col is None:
             print(f"Skipping {name}. No 'body' or 'text' column.")
+            failed.append(name)
             continue
+
+        dfs[name] = df
+        docs_dict[name] = df[df[text_col].notna()][text_col].tolist()
+        #docs_dict[name] = df[df[text_col]][text_col].tolist()
 
         print(f'Loaded {name}')
 
-        docs = list(df[df[text_col].notna()][text_col].values)
+    return dfs, docs_dict, datasets, failed
 
-        dfs[name] = df
-        docs_dict[name] = docs
+dfs, docs_dict, datasets, failed = process_datasets(data_dir)
 
-    return dfs, docs_dict
+print(f"{len(dfs)}/{len(datasets)} Dataframes loaded successfully")
+if failed:
+    print(f"Failed to load (check errors): {', '.join(failed)}")
 
-dfs, docs_dict = loading_datasets(datasets) # datafames aren't standalone variables
-print(f"{len(list(dfs.keys()))} Dataframes collected")
+print(list(dfs.values())[1].isna().sum())
 
-"""## **Sentiment & Emotion Analysis**"""
+"""## **Analysis**"""
 
-sentiment_model = 'finiteautomata/bertweet-base-sentiment-analysis'
-sentiment_analyzer = pipeline("text-classification", model=sentiment_model) #tweet
+directories = {
+    "emotions": Path(code_dir) / "visualizations" / "emotions",
+    "sentiments": Path(code_dir) / "visualizations" / "sentiments",
+}
 
-emotion_model = 'SamLowe/roberta-base-go_emotions' # Reddit
-emotion_analyzer = pipeline("text-classification", model=emotion_model)
+for path in directories.values():
+  os.makedirs(path, exist_ok=True)
 
-emotion_model2 = pipeline(
+emotion_dir=directories.get("emotions")
+sentiment_dir=directories.get("sentiments")
+
+models ={
+    "sentiment_model":"finiteautomata/bertweet-base-sentiment-analysis", #twitter
+    "emotion_model1":"SamLowe/roberta-base-go_emotions", #reddit
+    "emotion_model2":"cirimus/modernbert-base-go-emotions", #reddit
+    "emotion_model3":"boltuix/bert-emotion" #twitter
+    }
+
+sentiment_model=models['sentiment_model']
+emotion_model=models["emotion_model2"]
+
+sentiment_analyzer = pipeline("text-classification", model=sentiment_model)
+
+emotion_analyzer_single = pipeline("text-classification", model=emotion_model)
+emotion_analyzer_multi = pipeline(
     "text-classification",
-    model="cirimus/modernbert-base-go-emotions",
+    model=emotion_model,
     return_all_scores=True
-) #reddit
-
-emotion_model3 = pipeline("text-classification", model="boltuix/bert-emotion") #twitter
+    )
 
 def sentiment_analysis(df, text_col, batch_size=128):
     if text_col not in df.columns:
@@ -121,7 +117,7 @@ def sentiment_analysis(df, text_col, batch_size=128):
     df['sentiment_proba'] = confidence
     return df
 
-def emotion_analysis(df, text_col, batch_size=128):
+def emotion_analysis(df, analyzer, text_col, batch_size=128):
     if text_col not in df.columns:
         raise ValueError(f"DataFrame must contain a '{text_col}' column")
 
@@ -130,9 +126,18 @@ def emotion_analysis(df, text_col, batch_size=128):
 
     for i in tqdm(range(0, len(texts), batch_size)):
         batch = texts[i:i+batch_size]
-        results = emotion_analyzer(batch, truncation=True, padding=True)
+        results = analyzer(batch, truncation=True, padding=True)
 
-        for result in results:
+        if analyzer == emotion_analyzer_multi:
+          for result in results:
+            top_emotion = max(result['emotions'], key=lambda x: x['score'])
+            results.append(result['emotions'])
+
+            label.append(top_emotion['label'])
+            confidence.append(top_emotion['score'])
+            df['all_emotions'] = results
+        else:
+          for result in results:
             label.append(result['label'])
             confidence.append(result['score'])
 
@@ -140,80 +145,54 @@ def emotion_analysis(df, text_col, batch_size=128):
     df['emotion_proba'] = confidence
     return df
 
-for name, df in dfs.items():
-    if 'emotion_proba' in df.columns:
-        print(f'{name} already computed. Passing to next file\n')
-        continue
-
-    print(f'Computing {name}')
-    text_col = 'body' if 'body' in df.columns else 'text'
-
-    if 'emotion' not in df.columns:
-        df['emotion'] = None
-    if 'sentiment' not in df.columns:
-        df['sentiment'] = None
-
-    non_null_idx = df[df[text_col].notna()].index
-
-    subset_df = df.loc[non_null_idx]
-    subset_df = sentiment_analysis(subset_df, text_col=text_col)
-    subset_df = emotion_analysis(subset_df, text_col=text_col)
-
-    df.loc[non_null_idx, 'sentiment_label'] = subset_df['sentiment_label']
-    df.loc[non_null_idx, 'sentiment_proba'] = subset_df['sentiment_proba']
-    df.loc[non_null_idx, 'emotion_label'] = subset_df['emotion_label']
-    df.loc[non_null_idx, 'emotion_proba'] = subset_df['emotion_proba']
-
-    df.to_csv(datasets[name], index=False)
-
 import traceback
 
 for name, df in dfs.items():
-  print("\n"+"="*50)
+  print("\n" + "="*50)
   print(f'Computing {name}')
   print("="*50)
 
   text_col = 'body' if 'body' in df.columns else 'text'
 
-    if 'emotion' not in df.columns:
-        df['emotion'] = None
-    if 'sentiment' not in df.columns:
-        df['sentiment'] = None
-
-    non_null_idx = df[df[text_col].notna()].index
-
-    subset_df = df.loc[non_null_idx]
-    subset_df = sentiment_analysis(subset_df, text_col=text_col)
-    subset_df = emotion_analysis(subset_df, text_col=text_col)
-
-    df.loc[non_null_idx, 'sentiment_label'] = subset_df['sentiment_label']
-    df.loc[non_null_idx, 'sentiment_proba'] = subset_df['sentiment_proba']
-    df.loc[non_null_idx, 'emotion_label'] = subset_df['emotion_label']
-    df.loc[non_null_idx, 'emotion_proba'] = subset_df['emotion_proba']
-
+  try:
+    df = sentiment_analysis(df, text_col=text_col)
+    df = emotion_analysis(df, emotion_analyzer_multi, text_col=text_col)
     df.to_csv(datasets[name], index=False)
+  except TypeError as e:
+    print(f"Caught TypeError: {e}")
+    print("Retrying without computing multiple emotions")
+    df = emotion_analysis(df, emotion_analyzer_single, text_col=text_col)
+  except Exception as e:
+    print(f"Error occurred during analysis of {name}: {e}")
+    print(traceback.format_exc())
+    continue
 
-"""# Emotion Visualizations"""
+dfs['climate_twitter_sample']
+#dfs['filtered_anticonsumption_comments']
+
+dfs['filtered_anticonsumption_comments']
+
+"""# Emotion Visualizations
+*   Word clouds to represent overall emotional distribution
+
++ Time-series visualization to show how emotions change over time
+
+"""
 
 
 
 """# **Sentiment Visualizations**
-1. Distribution in Generated Texts
+1. Distribution as Pie Charts
 2. Sentiment Probability Histograms
 3. Sentiment Probability Violin Plots
 """
 
-import matplotlib
-import matplotlib.pyplot as plt
-import seaborn as sns
+sent_dist = Path(sentiment_dir) / "pie charts"
+sent_vio = Path(sentiment_dir) / "violin distributions"
+sent_his = Path(sentiment_dir) / "probability histograms"
 
-sent_dist = os.path.join(paths.get("insights"), "sentiment distribution/")
 os.makedirs(sent_dist, exist_ok=True)
-
-sent_vio = os.path.join(paths.get("insights"), "sentiment probability violins/")
 os.makedirs(sent_vio, exist_ok=True)
-
-sent_his = os.path.join(paths.get("insights"), "sentiment probability histograms/")
 os.makedirs(sent_his, exist_ok=True)
 
 save_dir = sent_dist
