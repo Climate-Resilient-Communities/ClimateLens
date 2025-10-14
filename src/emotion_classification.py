@@ -1,26 +1,42 @@
-from google.colab import drive
-drive.mount('/content/drive')
-
 import os
 import re
 from dotenv import load_dotenv
 from pathlib import Path
-import numpy as np
+import traceback
+
 import pandas as pd
 from tqdm import tqdm
 import torch
 from transformers import pipeline
-import matplotlib
+# !pip3 install emoji==0.6.0
+
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-env_path = '.'
-load_dotenv(env_path) #for colab
-#load_dotenv('.env')
+def check_env(): #check working env
+  try:
+    import google.colab
+    return True
+  except ImportError:
+    return False
 
-data_dir = os.getenv("DATA_DIR")
-code_dir = os.getenv("CODE_DIR")
-print('Token(s) loaded:', bool(data_dir), bool(code_dir))
+def load_env():
+  if check_env():
+    base_path = "." # manually update this
+    env_path = Path(base_path) / ".env"
+  else:
+    base_path = path(__file__).resolve().parent
+    env_path = base_path / ".env"
+
+  if env_path.exists():
+    load_dotenv(env_path)
+  else:
+    print("No .env file found")
+
+  return {
+      "data_dir": os.getenv("DATA_DIR"),
+      "code_dir": os.getenv("CODE_DIR"),
+  }
 
 def process_datasets(data_path):
     datasets = {}
@@ -57,14 +73,6 @@ def process_datasets(data_path):
         print(f'Loaded {name}')
 
     return dfs, docs_dict, datasets, failed
-
-dfs, docs_dict, datasets, failed = process_datasets(data_dir)
-
-print(f"{len(dfs)}/{len(datasets)} Dataframes loaded successfully")
-if failed:
-    print(f"Failed to load (check errors): {', '.join(failed)}")
-
-print(list(dfs.values())[1].isna().sum())
 
 """## **Analysis**"""
 
@@ -145,27 +153,46 @@ def emotion_analysis(df, analyzer, text_col, batch_size=128):
     df['emotion_proba'] = confidence
     return df
 
-import traceback
+def main():
+  env=load_env()
+  data_dir = env["data_dir"]
+  code_dir = env["code_dir"]
 
-for name, df in dfs.items():
-  print("\n" + "="*50)
-  print(f'Computing {name}')
-  print("="*50)
+  if not data_dir or not code_dir:
+    raise EnvironmentError("DATA_DIR and CODE_DIR must be set in the .env file.")
 
-  text_col = 'body' if 'body' in df.columns else 'text'
+  print("Environment variables loaded:")
+  print("DATA_DIR:", bool(data_dir))
+  print("CODE_DIR:", bool(code_dir))
 
-  try:
-    df = sentiment_analysis(df, text_col=text_col)
-    df = emotion_analysis(df, emotion_analyzer_multi, text_col=text_col)
-    df.to_csv(datasets[name], index=False)
-  except TypeError as e:
-    print(f"Caught TypeError: {e}")
-    print("Retrying without computing multiple emotions")
-    df = emotion_analysis(df, emotion_analyzer_single, text_col=text_col)
-  except Exception as e:
-    print(f"Error occurred during analysis of {name}: {e}")
-    print(traceback.format_exc())
-    continue
+  if check_env():
+    from google.colab import drive
+    drive.mount("/content/drive")
+
+  dfs, docs_dict, datasets, failed = process_datasets(data_dir)
+  print(f"\n{len(dfs)}/{len(datasets)} datasets loaded successfully.")
+  if failed:
+    print("Failed to load:", ", ".join(failed))
+
+  for name, df in dfs.items():
+    print("\n" + "=" * 50)
+    print(f"Analyzing {name}")
+    print("=" * 50)
+    text_col = 'body' if 'body' in df.columns else 'text'
+
+    try:
+      df = emotion_analysis(df, multi_emotion_analyzer, text_col=text_col)
+    except TypeError as e:
+      print(f"Multi-emotion failed for {name}: {e}")
+      print("\nRetrying without computing multiple emotions\n")
+      df = emotion_analysis(df, emotion_analyzer_single, text_col=text_col)
+    except Exception as e:
+      print(f"Error occurred during analysis of {name}: {e}")
+      print(traceback.format_exc())
+      continue
+
+if __name__ == "__main__":
+  main()
 
 dfs['climate_twitter_sample']
 #dfs['filtered_anticonsumption_comments']
