@@ -1,101 +1,104 @@
 import os
-import pandas as pd
-from dotenv import load_dotenv
+import re
+import time
+import warnings
+import traceback
 from pathlib import Path
 
-from google.colab import drive
-drive.mount('/content/drive')
+import pandas as pd
+from dotenv import load_dotenv
+from bertopic import BERTopic
+from bertopic.representation import MaximalMarginalRelevance
+from sklearn.feature_extraction.text import CountVectorizer
+from sentence_transformers import SentenceTransformer
+from umap import UMAP
+from hdbscan import HDBSCAN
+# import cohere
 
-env_path = '.'
+warnings.filterwarnings("ignore")
 
-#load_dotenv('.env') #manually uploaded in current dir:
-load_dotenv(env_path) #for colab
+def setup_environment():
+    try:
+        import google.colab
+        from google.colab import drive
+        drive.mount("/content/drive")
 
-data_dir = os.getenv("DATA_DIR")
-code_dir = os.getenv("CODE_DIR")
-print('Token(s) loaded:', bool(data_dir), bool(code_dir))
+        print("Installing dependencies...")
+        !pip install bertopic sentence-transformers umap-learn hdbscan
 
-def load_datasets(data_path, datasets):
-    for file in os.listdir(data_path):
-        file_path = os.path.join(data_path, file)
+        print("Environment setup complete.")
+        return True
 
-        if os.path.isfile(file_path):
-            if '_filtered' in file:
-                file_name = file.replace("_filtered", "").replace(".csv", "")
-            elif "_clean" in file:
-                file_name = file.replace("_clean", "").replace(".csv", "")
-            else:
-                file_name = file.replace(".csv", "")
+    except ImportError:
+        return False
 
-            datasets[file_name] = file_path
+def load_env():
+  if setup_environment():
+    base_path = "/content/drive/MyDrive/ClimateLens/02 Notebooks/02.01 MVP2/"
+    env_path = Path(base_path) / ".env"
+  else:
+    env_path = Path(__file__).resolve().parent / ".env"
 
-datasets = {}
-load_datasets(data_dir, datasets)
+  if env_path.exists():
+    load_dotenv(env_path)
+  else:
+    raise FileNotFoundError(f".env file not found at {env_path}")
 
-print("Collected Datasets:")
-for key, value in datasets.items():
-    print(f'{key}: {value}\n')
+  return {
+      "data_dir": os.getenv("DATA_DIR"),
+      "code_dir": os.getenv("CODE_DIR"),
+  }
 
-def loading_datasets(datasets):
-    dfs = {}
-    docs_dict = {}
-
-    for name, path in datasets.items():
-        try:
-            df = pd.read_csv(path)
-        except Exception as e:
-            print(f"Error reading {path}: {e}")
-            continue
-
-        if "cleaned_text" in df.columns:
-            text_col = "cleaned_text"
-        else:
-            print(f"Skipping {name}. No 'body' or 'text' column.")
-            continue
-
-        df = df.dropna(subset=[text_col])
-
-        print(f'Loaded {name}')
-
-        docs = list(df[text_col].values)
-
-        dfs[name] = df
-        docs_dict[name] = docs
-
-    return dfs, docs_dict
-
-dfs, docs_dict = loading_datasets(datasets) # datafames aren't standalone variables
-print(f"{len(list(dfs.keys()))} Dataframes collected")
-
-paths = {
+directories = {
     "models": Path(code_dir) / "models",
     "IDM": Path(code_dir) / "visualizations" / "IDM",
     "heirarchies": Path(code_dir) / "visualizations" / "heirarchies",
     "barcharts": Path(code_dir) / "visualizations" / "barcharts",
 }
 
-os.makedirs(paths.get("models"), exist_ok=True)
-os.makedirs(paths.get("IDM"), exist_ok=True)
-os.makedirs(paths.get("heirarchies"), exist_ok=True)
-os.makedirs(paths.get("barcharts"), exist_ok=True)
+for path in directories.values():
+  os.makedirs(path, exist_ok=True)
 
-IDM_dir=paths.get("IDM")
-heirarchy_dir=paths.get("heirarchies")
-barchart_dir=paths.get("barcharts")
-model_dir=paths.get("models")
+IDM_dir = directories["IDM"]
+hierarchy_dir = directories["hierarchies"]
+barchart_dir = directories["barcharts"]
+model_dir = directories["models"]
 
-import warnings
-warnings.filterwarnings("ignore")
+def process_datasets(data_path):
+    dfs, docs_dict, datasets, failed = {}, {}, {}, []
 
-### modeling
-from bertopic import BERTopic
-from bertopic.representation import MaximalMarginalRelevance
-from sklearn.feature_extraction.text import CountVectorizer, ENGLISH_STOP_WORDS
-from sentence_transformers import SentenceTransformer
-from umap import UMAP
-from hdbscan import HDBSCAN
+    for file in os.listdir(data_path):
+        file_path = os.path.join(data_path, file)
 
-# import cohere
+        if os.path.isfile(file_path) and file.endswith(".csv"):
+            file_name = re.sub(r"(_clean|filtered_)?\.csv$", "", file)
+            datasets[file_name] = file_path
+
+    for name, path in datasets.items():
+        try:
+            df = pd.read_csv(path)
+        except Exception as e:
+            print(f"Error reading {path}: {e}")
+            failed.append(name)
+            continue
+
+        text_col = next((col for col in ['body', 'text'] if col in df.columns), None)
+
+        if text_col is None:
+            print(f"Skipping {name}. No 'body' or 'text' column.")
+            failed.append(name)
+            continue
+
+        dfs[name] = df
+        docs_dict[name] = df[df[text_col].notna()][text_col].tolist()
+
+        print(f'Loaded {name}')
+
+    return dfs, docs_dict, datasets, failed
+
+print(f"{len(dfs)}/{len(datasets)} Dataframes loaded successfully")
+if failed:
+    print(f"Failed to load (check errors): {', '.join(failed)}")
 
 """# Topic Modeling"""
 
