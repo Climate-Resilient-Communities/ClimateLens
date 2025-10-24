@@ -33,6 +33,8 @@ def load_env():
 
   if env_path.exists():
     load_dotenv(env_path)
+    print("Environment variables loaded:")
+    print(f"DATA_DIR: {bool(data_dir)}, CODE_DIR: {bool(code_dir)}")
   else:
     raise FileNotFoundError(f".env file not found at {env_path}")
 
@@ -71,6 +73,10 @@ def process_datasets(data_path):
 
         print(f'Loaded {name}')
 
+        print(f"\n{len(dfs)}/{len(datasets)} datasets loaded successfully.")
+        if failed:
+          print("Failed to load:", ", ".join(failed))
+
     return dfs, docs_dict, datasets, failed
 
 def load_models():
@@ -79,12 +85,14 @@ def load_models():
     emotion_twitter = "boltuix/bert-emotion" #13 labels
     emotion_general = "cirimus/modernbert-base-go-emotions" #heavy reddit-leaning, 28 labels
 
+    print("Loading models...\n")
+
     sentiment_analyzer = pipeline("text-classification", model=sentiment_model)
 
     emotion_analyzer_twitter = pipeline(
         "text-classification",
         model=emotion_twitter,
-        top_k=None
+        top_k=None # check to see if this works, even with single labels
     )
 
     emotion_analyzer_reddit = pipeline(
@@ -115,7 +123,7 @@ def sentiment_analysis(df, analyzer, text_col=None, batch_size=128):
 
     for i in tqdm(range(0, len(texts), batch_size)):
         batch = texts[i:i+batch_size]
-        results = analyzer(batch, padding=True) #truncation=True isn't set
+        results = analyzer(batch, padding=True, truncation=True)
 
         for result in results:
             label.append(result['label'])
@@ -136,7 +144,7 @@ def emotion_analysis(df, analyzer, text_col=None, batch_size=128, multi=False):
 
     for i in tqdm(range(0, len(texts), batch_size)):
         batch = texts[i:i+batch_size]
-        results = analyzer(batch, padding=True)
+        results = analyzer(batch, padding=True, truncation=True, max_length=512)
 
         if multi:
             for emotion_list in results:
@@ -166,20 +174,14 @@ def main():
   if not data_dir or not code_dir:
     raise EnvironmentError("DATA_DIR and CODE_DIR must be set in the .env file.")
 
-  print("Environment variables loaded:")
-  print(f"DATA_DIR: {bool(data_dir)}, CODE_DIR: {bool(code_dir)}")
-
   dfs, docs_dict, datasets, failed = process_datasets(data_dir)
-  print(f"\n{len(dfs)}/{len(datasets)} datasets loaded successfully.")
-  if failed:
-    print("Failed to load:", ", ".join(failed))
 
   models = load_models()
 
   for name, df in dfs.items():
     print(f"\n{'=' * 50}\nAnalyzing {name}\n{'=' * 50}")
 
-    #df = sentiment_analysis(df, analyzer=models["sentiment"])
+    df = sentiment_analysis(df, analyzer=models["sentiment"])
 
     emotion_model = choose_emotion_model(name, models)
     try:
