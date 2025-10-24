@@ -13,9 +13,9 @@ from sklearn.feature_extraction.text import CountVectorizer
 from sentence_transformers import SentenceTransformer
 from umap import UMAP
 from hdbscan import HDBSCAN
-# import cohere
+#import cohere
 
-warnings.filterwarnings("ignore")
+#warnings.filterwarnings("ignore")
 
 def setup_environment():
     try:
@@ -24,7 +24,7 @@ def setup_environment():
         drive.mount("/content/drive")
 
         print("Installing dependencies...")
-        !pip install bertopic sentence-transformers umap-learn hdbscan
+        !pip install bertopic sentence-transformers umap-learn hdbscan #cohere
 
         print("Environment setup complete.")
         return True
@@ -34,7 +34,7 @@ def setup_environment():
 
 def load_env():
   if setup_environment():
-    base_path = "/content/drive/MyDrive/ClimateLens/02 Notebooks/02.01 MVP2/"
+    base_path = "..."
     env_path = Path(base_path) / ".env"
   else:
     env_path = Path(__file__).resolve().parent / ".env"
@@ -48,21 +48,6 @@ def load_env():
       "data_dir": os.getenv("DATA_DIR"),
       "code_dir": os.getenv("CODE_DIR"),
   }
-
-directories = {
-    "models": Path(code_dir) / "models",
-    "IDM": Path(code_dir) / "visualizations" / "IDM",
-    "heirarchies": Path(code_dir) / "visualizations" / "heirarchies",
-    "barcharts": Path(code_dir) / "visualizations" / "barcharts",
-}
-
-for path in directories.values():
-  os.makedirs(path, exist_ok=True)
-
-IDM_dir = directories["IDM"]
-hierarchy_dir = directories["hierarchies"]
-barchart_dir = directories["barcharts"]
-model_dir = directories["models"]
 
 def process_datasets(data_path):
     dfs, docs_dict, datasets, failed = {}, {}, {}, []
@@ -99,24 +84,34 @@ def process_datasets(data_path):
 print(f"{len(dfs)}/{len(datasets)} Dataframes loaded successfully")
 if failed:
     print(f"Failed to load (check errors): {', '.join(failed)}")
+ 
+def create_directories(code_dir):
+  directories = {
+      "models": Path(code_dir) / "models",
+      "IDM": Path(code_dir) / "visualizations" / "IDM",
+      "heirarchies": Path(code_dir) / "visualizations" / "heirarchies",
+      "barcharts": Path(code_dir) / "visualizations" / "barcharts",
+  }
 
-"""# Topic Modeling"""
+  for path in directories.values():
+    os.makedirs(path, exist_ok=True)
 
-topic_models = {} # 'name': 'topic model'
-topics_dict = {} # 'name' : 'topics'
-probs_dict = {} # 'name' : 'probs'
-topic_info_dict = {} # 'name' : 'topic information' .get_topic_info()
-core_topics_dict = {} # 'name' : 'processed core topics'
+  IDM_dir = directories["IDM"]
+  hierarchy_dir = directories["hierarchies"]
+  barchart_dir = directories["barcharts"]
+  model_dir = directories["models"]
 
-embedding_model_name = "sentence-transformers/all-MiniLM-L12-v2"
-embedding_model = SentenceTransformer(embedding_model_name)
-embeddings_dict = {}
-for name, docs in docs_dict.items(): #pre-calculating embeddings
-    print(f'Computing {name} embeddings:\n')
-    embeddings_dict[name] = embedding_model.encode(docs, show_progress_bar=True)
-    print('\n')
+def compute_embeddings(docs_dict):
+  topic_models, topics_dict, probs_dict = {}, {}, {}, # 'name': 'model/topics/probs'
+  topic_info_dict, core_topics_dict = {}, {} # 'name' : 'topic info / core topics'
 
-import time
+  embedding_model_name = "sentence-transformers/all-MiniLM-L12-v2"
+  embedding_model = SentenceTransformer(embedding_model_name)
+  embeddings_dict = {}
+  for name, docs in docs_dict.items():
+      print(f'Computing {name} embeddings:\n')
+      embeddings_dict[name] = embedding_model.encode(docs, show_progress_bar=True)
+      print('\n')
 
 def bert_model(dataset_name, min_df, max_df, n_neighbors, min_cluster_size, min_topic_size):
     vectorizer_model = CountVectorizer(
@@ -293,8 +288,6 @@ def save_and_reload_model(name):
     joined_path = os.path.join(model_dir, f"{name}.safetensors")
     topic_models[name].save(joined_path, serialization="safetensors")
     #return BERTopic.load(save_path) # immediately reload
-
-import traceback
 
 for name in list(docs_dict.keys()):
     print("\n" + "="*50)
