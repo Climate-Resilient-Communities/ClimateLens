@@ -7,13 +7,6 @@ from pathlib import Path
 
 import pandas as pd
 from dotenv import load_dotenv
-from bertopic import BERTopic
-from bertopic.representation import MaximalMarginalRelevance
-from sklearn.feature_extraction.text import CountVectorizer
-from sentence_transformers import SentenceTransformer
-from umap import UMAP
-from hdbscan import HDBSCAN
-#import cohere
 
 #warnings.filterwarnings("ignore")
 
@@ -25,58 +18,64 @@ def load_environment():
 
     print("Installing dependencies...")
     !pip install -q bertopic sentence-transformers umap-learn hdbscan #cohere
-    print("Environment setup complete.")
+    print("Dependencies installed.")
 
     base_path = "..."
     env_path = Path(base_path) / ".env"
+    JUPYTER=True
   except ImportError:
     env_path = Path(__file__).resolve().parent / ".env"
+    JUPYTER=False
+  finally:
+    from bertopic import BERTopic
+    from bertopic.representation import MaximalMarginalRelevance
+    from sklearn.feature_extraction.text import CountVectorizer
+    from sentence_transformers import SentenceTransformer
+    from umap import UMAP
+    from hdbscan import HDBSCAN
+    #import cohere
 
   if env_path.exists():
     load_dotenv(env_path)
-    print("Loaded environment variables")
+    print("Loading environment variables")
     data_dir, code_dir = os.getenv("DATA_DIR"), os.getenv("CODE_DIR")
   else:
     raise FileNotFoundError(f".env file not found at {env_path}")
 
-  return data_dir, code_dir
+  return data_dir, code_dir, JUPYTER
 
-def process_datasets(data_path):
-    dfs, docs_dict, datasets, failed = {}, {}, {}, []
+def process_datasets(data_path, text_cols=('body', 'text')):
+    datasets, dfs, docs_dict, failed = {}, {}, {}, []
+    data_path = Path(data_path)
 
-    for file in os.listdir(data_path):
-        file_path = os.path.join(data_path, file)
+    for file_path in data_path.glob("*.csv"):
+        name = re.sub(r"(_clean|filtered_)?\.csv$", "", file_path.stem)
+        datasets[name] = file_path  # only used for links
 
-        if os.path.isfile(file_path) and file.endswith(".csv"):
-            file_name = re.sub(r"(_clean|filtered_)?\.csv$", "", file)
-            datasets[file_name] = file_path
-
-    for name, path in datasets.items():
         try:
-            df = pd.read_csv(path)
+            df = pd.read_csv(file_path)
+            text_col = next((c for c in text_cols if c in df.columns), None)
+
+            if not text_col:
+                print(f"Skipping {name}. No {text_cols} column found.")
+                failed.append(name)
+                continue
+
+            dfs[name] = df
+            docs_dict[name] = df[df[text_col].notna()][text_col].tolist()
+            #docs_dict[name] = df[text_col].dropna().astype(str).tolist()
+            print(f"Loaded {name} ({len(dfs[name])} rows) from: {file_path}")
+
         except Exception as e:
-            print(f"Error reading {path}: {e}")
+            print(f"Error loading {name}: {e}")
             failed.append(name)
-            continue
 
-        text_col = next((col for col in ['body', 'text'] if col in df.columns), None)
+    print(f"{len(dfs)}/{len(datasets)} datasets loaded successfully")
+    if failed:
+        print(f"Failed to load: {', '.join(failed)}")
 
-        if text_col is None:
-            print(f"Skipping {name}. No 'body' or 'text' column.")
-            failed.append(name)
-            continue
+    return dfs, docs_dict, datasets
 
-        dfs[name] = df
-        docs_dict[name] = df[df[text_col].notna()][text_col].tolist()
-
-        print(f'Loaded {name}')
-
-    return dfs, docs_dict, datasets, failed
-
-print(f"{len(dfs)}/{len(datasets)} Dataframes loaded successfully")
-if failed:
-    print(f"Failed to load (check errors): {', '.join(failed)}")
- 
 def create_directories(code_dir):
   directories = {
       "models": Path(code_dir) / "models",
@@ -94,9 +93,6 @@ def create_directories(code_dir):
   model_dir = directories["models"]
 
 def compute_embeddings(docs_dict):
-  topic_models, topics_dict, probs_dict = {}, {}, {}, # 'name': 'model/topics/probs'
-  topic_info_dict, core_topics_dict = {}, {} # 'name' : 'topic info / core topics'
-
   embedding_model_name = "sentence-transformers/all-MiniLM-L12-v2"
   embedding_model = SentenceTransformer(embedding_model_name)
   embeddings_dict = {}
@@ -175,6 +171,7 @@ def create_submodels(params=None):
     return vectorizer_model, umap_model, hdbscan_model, representation_model
 
 def bert_model(dataset_name, docs, embeddings, params=None):
+  topic_models, topics_dict, probs_dict = {}, {}, {}, # 'name': 'model/topics/probs'
     vectorizer_model, umap_model, hdbscan_model, representation_model = create_model(params)
     embedding_model_name = "sentence-transformers/all-MiniLM-L12-v2"
 
@@ -188,36 +185,38 @@ def bert_model(dataset_name, docs, embeddings, params=None):
         nr_topics='auto',
     )
 
+    topic_models[dataset_name] = topic_model
+
     print(f"Fitting {dataset_name} model...\n")
     start_time = time.time()
 
     try:
-        topics, probs = topic_model.fit_transform(
-            docs_dict[dataset_name],
-            embeddings_dict[dataset_name]
-        )
+        topics, probs = topic_model.fit_transform(docs, embeddings)
+        topics_dict[dataset_name] = topics
+        probs_dict[dataset_name] = probs
         return topic_model, topics, probs
 
     except Exception as e:
-        print(f'Error occured during {dataset_name} topic modeling: {e}')
+        print(f'Error during {dataset_name} topic modeling: {e}')
+        traceback.print_exc()
         return None, None, None
 
     finally:
         end_time = time.time()
-        elapsed_time = (end_time - start_time) / 3600
+        elapsed_time = (end_time - start_time) / 60
         print(f"{dataset_name} topic modeling completed in {elapsed_time:.3f} hours using {embedding_model_name}")
 
-from IPython.display import display
-
-def annotate_data(name):
+def annotate_data(name, JUPYTER):
     dfs[name]['topic'] = topics_dict[name]
     dfs[name]['topic_proba'] = probs_dict[name]
 
-    print("processed data:\n")
-    display(dfs[name].sample(n=min(3, len(dfs[name]))))
+    if JUPYTER:
+      from IPython.display import display
+      print("processed data:\n")
+      display(dfs[name].sample(n=min(3, len(dfs[name]))))
 
-    print(f'\nNumber of topics (including outlier): {len(topic_info_dict[name])}\n')
-    display(topic_info_dict[name].sample(n=min(4, len(topic_info_dict[name])))) #uncomment if in jupyter notebook
+      print(f'\nNumber of topics (including outlier): {len(topic_info_dict[name])}\n')
+      display(topic_info_dict[name].sample(n=min(4, len(topic_info_dict[name]))))
 
 def process_topic_merges(name, topic_col='topic', repr_docs_col='Representative_Docs'):
     df = dfs[name].merge(
@@ -258,17 +257,6 @@ def process_core_topics(name, core_topics):
 
     return core_topics
 
-def visualize_model(name):
-    topic_model = topic_models[name]
-    print(f"\nVisuals for {name}:\n")
-
-    figure_hierarchy=topic_model.visualize_hierarchy()
-    figure_topics=topic_model.visualize_topics()
-    figure_barchart=topic_model.visualize_barchart(top_n_topics=10, n_words=10)
-
-    display(figure_topics)
-    display(figure_barchart)
-
 def update_model(name, save=True):
     topic_model = topic_models[name]
 
@@ -297,10 +285,47 @@ def save_and_reload_model(name):
     topic_models[name].save(joined_path, serialization="safetensors")
     #return BERTopic.load(save_path) # immediately reload
 
+def main():
+    data_dir, code_dir, JUPYTER = load_environment()
+    if not data_dir or not code_dir:
+      raise EnvironmentError("DATA_DIR and CODE_DIR must be set in the .env file.")
+
+    dfs, docs_dict, datasets = process_datasets(data_dir)
+    create_directories(code_dir)
+    embeddings_dict = compute_embeddings(docs_dict)
+
+    topic_models = {}
+    for name, docs in docs_dict.items():
+      print(f"\n{'=' * 50}\nAnalyzing {name}\n{'=' * 50}")
+        params = (
+            {"min_df": 0.05, "max_df": 0.90, "n_neighbors": 5,
+             "min_cluster_size": 5, "min_topic_size": 5}
+            if name == "twitter"
+            else {"min_df": 0.05, "max_df": 0.90, "n_neighbors": 6,
+                  "min_cluster_size": 7, "min_topic_size": 7}
+        )
+        topic_model, topics, probs = bert_model(name, docs, embeddings_dict[name], params=params)
+        topic_info_dict, core_topics_dict = {}, {} # 'name' : 'topic info / core topics'
+
+        if topic_model:
+            topic_models[name] = topic_model
+            topic_info = topic_model.get_topic_info()
+            print(f"📊 {name}: {len(topic_info) - 1} topics (excluding outlier)")
+
+            # Save model
+            model_dir = Path(code_dir) / "models"
+            model_dir.mkdir(parents=True, exist_ok=True)
+            save_path = model_dir / f"{name}.safetensors"
+            topic_model.save(str(save_path), serialization="safetensors")
+            print(f"💾 Model saved: {save_path}")
+
+    print("\nAll datasets processed successfully.")
+
+if __name__ == "__main__":
+    main()
+
 for name in list(docs_dict.keys()):
-    print("\n" + "="*50)
-    print(f"Starting Topic Modeling for: {name}")
-    print("="*50)
+    print(f"\n{'=' * 50}\nAnalyzing {name}\n{'=' * 50}")
 
     try:
         if name == 'twitter':
