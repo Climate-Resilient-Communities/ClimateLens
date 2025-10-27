@@ -27,7 +27,7 @@ def load_environment():
     !pip install -q bertopic sentence-transformers umap-learn hdbscan #cohere
     print("Environment setup complete.")
 
-    base_path = "/content/drive/MyDrive/ClimateLens/02 Notebooks/02.01 MVP2/"
+    base_path = "..."
     env_path = Path(base_path) / ".env"
   except ImportError:
     env_path = Path(__file__).resolve().parent / ".env"
@@ -105,15 +105,25 @@ def compute_embeddings(docs_dict):
       embeddings_dict[name] = embedding_model.encode(docs, show_progress_bar=True)
       print('\n')
 
-def bert_model(dataset_name, min_df, max_df, n_neighbors, min_cluster_size, min_topic_size):
+  return embeddings_dict
+
+def create_submodels(params=None):
+    params = params or {
+        "min_df": 0.05,
+        "max_df": 0.9,
+        "n_neighbors": 6,
+        "min_cluster_size": 7,
+        "min_topic_size": 7,
+    }
+
     vectorizer_model = CountVectorizer(
         ngram_range=(1, 2),
-        min_df=min_df,
-        max_df=max_df
+        min_df=params["min_df"],
+        max_df=params["max_df"]
     )
 
     umap_model = UMAP(
-        n_neighbors=n_neighbors,
+        n_neighbors=params["n_neighbors"],
         n_components=5,
         metric='cosine',
         low_memory=False,
@@ -121,12 +131,11 @@ def bert_model(dataset_name, min_df, max_df, n_neighbors, min_cluster_size, min_
     )
 
     hdbscan_model = HDBSCAN(
-        min_cluster_size=min_cluster_size,
+        min_cluster_size=params["min_cluster_size"],
         metric='euclidean',
         prediction_data=True
     )
 
-    # Create MMR model
     mmr_model = MaximalMarginalRelevance(diversity=0.1)
 
     # Cohere integration - commented out due to API deprecation (Sept 15, 2025)
@@ -159,8 +168,15 @@ def bert_model(dataset_name, min_df, max_df, n_neighbors, min_cluster_size, min_
     # else:
 
     # Using MMR only until Cohere integration is fixed
+
+    # Using MMR only until Cohere integration is fixed
     representation_model = mmr_model
-    print(f"Using MMR for {dataset_name}")
+
+    return vectorizer_model, umap_model, hdbscan_model, representation_model
+
+def bert_model(dataset_name, docs, embeddings, params=None):
+    vectorizer_model, umap_model, hdbscan_model, representation_model = create_model(params)
+    embedding_model_name = "sentence-transformers/all-MiniLM-L12-v2"
 
     topic_model = BERTopic(
         embedding_model=embedding_model,
@@ -168,7 +184,7 @@ def bert_model(dataset_name, min_df, max_df, n_neighbors, min_cluster_size, min_
         hdbscan_model=hdbscan_model,
         vectorizer_model=vectorizer_model,
         representation_model=representation_model,
-        min_topic_size=min_topic_size,
+        min_topic_size=params.get("min_topic_size", 7), #look into this further, especially for larger datasets and very small texts
         nr_topics='auto',
     )
 

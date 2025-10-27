@@ -19,7 +19,7 @@ def load_environment():
     !pip install -q emoji==0.6.0
     print("Environment setup complete.")
 
-    base_path = "/content/drive/MyDrive/ClimateLens/02 Notebooks/02.01 MVP2/"
+    base_path = "..."
     env_path = Path(base_path) / ".env"
   except ImportError:
     env_path = Path(__file__).resolve().parent / ".env"
