@@ -17,37 +17,29 @@ from hdbscan import HDBSCAN
 
 #warnings.filterwarnings("ignore")
 
-def setup_environment():
-    try:
-        import google.colab
-        from google.colab import drive
-        drive.mount("/content/drive")
+def load_environment():
+  try:
+    import google.colab
+    from google.colab import drive
+    drive.mount("/content/drive")
 
-        print("Installing dependencies...")
-        !pip install bertopic sentence-transformers umap-learn hdbscan #cohere
+    print("Installing dependencies...")
+    !pip install -q bertopic sentence-transformers umap-learn hdbscan #cohere
+    print("Environment setup complete.")
 
-        print("Environment setup complete.")
-        return True
-
-    except ImportError:
-        return False
-
-def load_env():
-  if setup_environment():
-    base_path = "..."
+    base_path = "/content/drive/MyDrive/ClimateLens/02 Notebooks/02.01 MVP2/"
     env_path = Path(base_path) / ".env"
-  else:
+  except ImportError:
     env_path = Path(__file__).resolve().parent / ".env"
 
   if env_path.exists():
     load_dotenv(env_path)
+    print("Loaded environment variables")
+    data_dir, code_dir = os.getenv("DATA_DIR"), os.getenv("CODE_DIR")
   else:
     raise FileNotFoundError(f".env file not found at {env_path}")
 
-  return {
-      "data_dir": os.getenv("DATA_DIR"),
-      "code_dir": os.getenv("CODE_DIR"),
-  }
+  return data_dir, code_dir
 
 def process_datasets(data_path):
     dfs, docs_dict, datasets, failed = {}, {}, {}, []
