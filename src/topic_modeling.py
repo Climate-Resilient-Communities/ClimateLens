@@ -5,17 +5,18 @@ import warnings
 import traceback
 from pathlib import Path
 
+import pandas as pd
+from dotenv import load_dotenv
+
 #!pip install -q bertopic sentence-transformers umap-learn hdbscan #cohere
+#import cohere
+#from bertopic.representation import Cohere
 from bertopic import BERTopic
 from bertopic.representation import MaximalMarginalRelevance
 from sklearn.feature_extraction.text import CountVectorizer
 from sentence_transformers import SentenceTransformer
 from umap import UMAP
 from hdbscan import HDBSCAN
-#import cohere
-
-import pandas as pd
-from dotenv import load_dotenv
 
 #warnings.filterwarnings("ignore")
 
@@ -102,11 +103,6 @@ def compute_embeddings(docs_dict):
   embeddings_dict = {}
   for name, docs in docs_dict.items():
     print(f'Computing {name} embeddings:')
-    if not docs:
-      print(f" - Warning: no docs for {name}")
-      embeddings_dict[name] = []
-      continue
-
     embeddings_dict[name] = embedding_model.encode(docs, show_progress_bar=True)
 
   return embeddings_dict
@@ -120,7 +116,6 @@ def create_submodels(params=None):
       "min_topic_size": 7,
   }
 
-  print("Creating submodels...")
   vectorizer_model = CountVectorizer(
       ngram_range=(1, 2),
       min_df=params["min_df"],
@@ -143,39 +138,45 @@ def create_submodels(params=None):
 
   mmr_model = MaximalMarginalRelevance(diversity=0.1)
 
-  # Cohere integration - commented out due to API deprecation (Sept 15, 2025)
-  # TODO: Re-enable once BERTopic supports new Cohere Chat API
-  # cohere_api_key = os.getenv("COHERE_API_KEY")
-  # if cohere_api_key:
-  #     cohere_client = cohere.Client(cohere_api_key)
-  #     custom_prompt = """
-  # I have a topic described by the following keywords:
-  # [KEYWORDS]
-  #
-  # The most representative documents for this topic are:
-  # [DOCUMENTS]
-  #
-  # Based on the information above, create a short topic label.
-  # Use 2-5 words maximum, no punctuation.
-  #
-  # Return only the label (2-5 words, no prefix)
-  # """
-  #     cohere_model = Cohere(
-  #         cohere_client,
-  #         model="command-r-08-2024",
-  #         prompt=custom_prompt,
-  #         nr_docs=4,
-  #         diversity=0.1,
-  #         delay_in_seconds=2
-  #     )
-  #     representation_model = [mmr_model, cohere_model]
-  #     print(f"✅ Using MMR + Cohere for {dataset_name}")
-  # else:
-
-  # Using MMR only until Cohere integration is fixed
-  representation_model = mmr_model
+  if cohere_integration():
+    representation_model = [mmr_model, cohere_model]
+    print(f"Using MMR + Cohere for representation")
+  else:
+    representation_model = mmr_model
 
   return vectorizer_model, umap_model, hdbscan_model, representation_model
+
+def cohere_integration():
+  cohere_api_key = os.getenv("COHERE_API_KEY")
+  if not cohere_api_key:
+      print("No COHERE_API_KEY found in .env file, skipping Cohere representation.")
+      return None
+
+  try:
+      cohere_client = cohere.Client(cohere_api_key)
+      custom_prompt = """
+      I have a topic described by the following keywords:
+      [KEYWORDS]
+
+      The most representative documents for this topic are:
+      [DOCUMENTS]
+
+      Based on the information above, create a short topic label.
+      Use 2-5 words maximum, no punctuation.
+
+      Return only the label (2-5 words, no prefix)
+      """
+      return Cohere(
+          cohere_client,
+          model="command-r-08-2024",
+          prompt=custom_prompt,
+          nr_docs=4,
+          diversity=0.1,
+          delay_in_seconds=2
+      )
+  except Exception as e:
+      print(f"Error initializing Cohere integration: {e}")
+      return None
 
 def bert_model(dataset_name, docs, embeddings, params=None):
   if not docs:
@@ -209,8 +210,8 @@ def bert_model(dataset_name, docs, embeddings, params=None):
       return None, None, None
   finally:
       end_time = time.time()
-      elapsed_hours = (end_time - start_time) / 3600.0
-      print(f"{dataset_name} topic modeling completed in {elapsed_hours:.3f} hours using {embedding_model_name}")
+      elapsed_hours = (end_time - start_time) / 3600
+      print(f"{dataset_name} topic modeling completed in {elapsed_hours:.2f} hours using {embedding_model_name}")
 
 def annotate_data(dfs, name, JUPYTER, topics_dict, probs_dict, topic_info_dict):
   dfs[name]["topic"] = topics_dict[name]
@@ -299,6 +300,13 @@ def save_and_reload_model(name, model_dir, topic_models):
   print(f"Model saved: {save_path}")
   #return BERTopic.load(str(save_path))
 
+def save_dataframe_inplace(path, df):
+    try:
+        df.to_csv(path, index=False)
+        print(f"Saved updated dataframe back to {path}")
+    except Exception as e:
+        print(f"Failed to save CSV: {e}")
+
 def main():
   data_dir, code_dir, JUPYTER = load_environment()
   if not data_dir or not code_dir:
@@ -357,6 +365,7 @@ def main():
       )
       save_and_reload_model(name, model_dir, topic_models)
 
+  save_dataframe_inplace(datasets[name], dfs[name])
   print("Pipeline finished successfully.")
 
 if __name__ == "__main__":
