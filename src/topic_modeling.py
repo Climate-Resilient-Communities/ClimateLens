@@ -363,9 +363,9 @@ def main():
           probs_dict=probs_dict,
           nr_topics=30
       )
+      save_dataframe_inplace(datasets[name], dfs[name])
       save_and_reload_model(name, model_dir, topic_models)
 
-  save_dataframe_inplace(datasets[name], dfs[name])
   print("Pipeline finished successfully.")
 
 if __name__ == "__main__":
