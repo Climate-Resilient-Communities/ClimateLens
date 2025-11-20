@@ -5,19 +5,22 @@ from datetime import datetime
 
 ml = MLClient.from_config(credential=DefaultAzureCredential())
 
+env = Environment(
+    name="climatelens-env",
+    conda_file="environment.yml",   # <- your environment
+    image="mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu20.04:latest"
+)
+
 job = command(
     code=".", # folder with scripts
     command="bash run_all.sh",
-    environment="azureml:env-name",#env name, good to hide
-    environment=Environment(
-        image="..." #env name, good to hide
-    ),
     compute=".", #cluster name, good to hide
+    environment=env,
     environment_variables={
         "CODE_DIR": ""
     },
-    experiment_name="multi-script-run",
-    display_name=f"multi-script-{datetime.utcnow().strftime('%H%M%S')}",
+    experiment_name="climatelens-script-run",
+    display_name=f"climatelens-script-{datetime.utcnow().strftime('%H%M%S')}",
 )
 
 submitted = ml.create_or_update(job)
