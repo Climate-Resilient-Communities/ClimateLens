@@ -33,6 +33,8 @@ By enabling early detection, ClimateLens empowers support networks and mental he
 ```
 # Cohere
 COHERE_API_KEY=your_cohere_key
+
+# Directories
 DATA_DIR=your_data_directory_here
 CODE_DIR=your_code_directory_here
 ```
@@ -54,6 +56,20 @@ Moreover, `topic_modeling.py` and `emotion_classification.py` both also require 
 ├── requirements.txt
 └── README.md
 ```
+
+# ⚙️ Azure ML Execution (Optional)
+
+ClimateLens supports cloud execution using Azure Machine Learning (AzureML).
+All code and data should already live inside your AzureML Workspace, the jobs simply run the pipeline on a compute cluster without needing a web connection (AzureML compute instances are VMs, but JupyterNotebook requires a job to run without the web connection).
+
+### **How it works**
+
+* AzureML mounts your existing workspace code and data
+* A job runs your scripts in sequence using `run_all.sh`
+* No local uploads or `.env` access are required
+* Logs stream back to your terminal
+
+```run_all.sh``` defines the order of your pipeline steps and ```submit_job.py``` submits the job to AzureML.
 
 ## 🌐 WebApp
 The production app is deployed on HuggingFace Spaces using Streamlit. All visualizations and explanations are present in the app.
