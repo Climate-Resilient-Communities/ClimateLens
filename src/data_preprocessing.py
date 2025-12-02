@@ -1,17 +1,44 @@
 import nltk
-
 nltk.download('stopwords')
 nltk.download('punkt_tab')
 nltk.download('punkt')
+
 import os
 import re
 import string
+from pathlib import Path
 
 import pandas as pd
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from nltk.util import ngrams
 
+import pandas as pd
+from dotenv import load_dotenv
+
+def load_environment():
+  try:
+    import google.colab
+    from google.colab import drive
+    drive.mount("/content/drive")
+
+    base_path = "..."
+    env_path = Path(base_path) / ".env"
+  except ImportError:
+    env_path = Path(__file__).resolve().parent / ".env"
+
+  if env_path.exists():
+    load_dotenv(env_path)
+    print("Loading environment variables")
+    data_dir, code_dir = os.getenv("DATA_DIR"), os.getenv("CODE_DIR")
+  else:
+    raise FileNotFoundError(f".env file not found at {env_path}")
+
+  return data_dir, code_dir
+
+data_dir, code_dir = load_environment()
+if not data_dir or not code_dir:
+    raise EnvironmentError("DATA_DIR and CODE_DIR must be set in the .env file.")
 
 def load_datasets(data_path, prefix, datasets):
     for file in os.listdir(data_path):
@@ -22,8 +49,8 @@ def load_datasets(data_path, prefix, datasets):
             datasets[file_name] = file_path
 
 datasets = {}
-load_datasets("...", "filtered_", datasets)
-load_datasets("...", "clean_", datasets)
+load_datasets(data_dir, "filtered_", datasets)
+load_datasets(data_dir, "clean_", datasets)
 
 print("Collected Datasets:")
 for key, value in datasets.items():
@@ -31,7 +58,6 @@ for key, value in datasets.items():
 
 def loading_datasets(datasets):
     dfs = {}
-    docs_dict = {}
 
     for name, path in datasets.items():
         try:
@@ -49,16 +75,9 @@ def loading_datasets(datasets):
             continue
 
         print(f'loaded {name}')
-
-        docs = list(df[text_col].values)
-
         dfs[name] = df
-        docs_dict[name] = docs
 
-    return dfs, docs_dict
-
-dfs, docs_dict = loading_datasets(datasets)
-print(f"{len(list(dfs.keys()))} Dataframes collected")
+    return dfs
 
 stop_words = set(stopwords.words("english"))
 
@@ -86,12 +105,8 @@ preserve_words =  {
     'i', 'you', 'we', 'they', 'he', 'she', 'it'
 }
 
-# combine nltk stopwords with our swear variants and garbage content words
-custom_stopwords = stop_words.union(swear_variants).union(additional_stopwords)
-
-# Remove preserved words from the stopwords set
-custom_stop_words = stop_words - preserve_words
-
+# combine nltk stopwords with our swear variants and garbage content words while removing preserved words from the stopwords set
+custom_stopwords = (stop_words - preserve_words).union(swear_variants).union(additional_stopwords)
 print(custom_stopwords)
 
 def remove_consecutive_repeats(tokens):
@@ -115,9 +130,9 @@ def preprocess_text(text):
     tokens = remove_consecutive_repeats(tokens)
     return ' '.join(tokens)
 
-def run_pipeline(datasets):
+def run_pipeline(datasets):    
     dfs, docs_dict = loading_datasets(datasets)
-    print(f"Dataframes collected:\n{list(dfs.keys())}")
+    print(f"{len(list(dfs.keys()))} Dataframes collected")
 
     for name, df in dfs.items():
         print(f"\nProcessing dataset: {name}")

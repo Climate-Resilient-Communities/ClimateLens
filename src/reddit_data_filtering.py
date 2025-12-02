@@ -18,8 +18,7 @@ search_terms = [
   "post-traumatic stress", "PTSD"
 ]
 
-# === CONFIGURATION ===
-input_file = Path("...")  # Change to another file when done
+input_file = Path("...")
 output_file = Path("...")
 
 def contains_keywords(text, keywords):
