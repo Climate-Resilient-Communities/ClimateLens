@@ -1,20 +1,18 @@
 import csv
 import json
-import os
 from pathlib import Path
-
 import pandas as pd
 
-input_path = Path("...")
-output_path = Path("...")
+input_path = Path("...") # raw NDJSON Twitter file
+output_path = Path("...") # cleaned CSV path
 
-# Collect just the first 10 lines to preview
+# preview first 100 lines
 preview_rows = []
-with open(input_path, 'r', encoding='utf-8') as f:
+with open(input_path, "r", encoding="utf-8") as f:
     for _ in range(100):
         try:
             preview_rows.append(json.loads(f.readline()))
-        except:
+        except Exception:
             continue
 
 df = pd.DataFrame(preview_rows)
@@ -22,30 +20,26 @@ df = pd.DataFrame(preview_rows)
 
 print("Preview columns:", df.columns.tolist())
 
-# Keep only the columns we care about
-desired_columns = ['created_at', 'text']
-df_clean = df[desired_columns].copy()
-df_clean.sample(5)
+desired_columns = ["created_at", "text"]
 
+df_clean = df[desired_columns].copy()
+print(df_clean.sample(5)) #bc it's .py file
 df_clean.info()
 
-with open(output_path, 'w', encoding='utf-8', newline='') as csvfile:
+with open(output_path, "w", encoding="utf-8", newline="") as csvfile:
     writer = csv.DictWriter(csvfile, fieldnames=desired_columns)
     writer.writeheader()
 
-    with open(input_path, 'r', encoding='utf-8') as f:
+    with open(input_path, "r", encoding="utf-8") as f:
         for line in f:
             try:
                 data = json.loads(line)
                 writer.writerow({
-                    'created_at': data.get('created_at', ''),
-                    'text': data.get('text', '')
+                    "created_at": data.get("created_at", ""),
+                    "text": data.get("text", "")
                 })
             except Exception:
-                continue  # skip malformed lines
+                continue
 
 df_full = pd.read_csv(output_path)
-df_full.info()
-
-df.dropna(inplace=True) #remove in memory
-df.to_csv("climate_twitter_clean.csv", index=False) #remove in file
+print(f"Twitter dataframe information:/n{df_full.info()}")
