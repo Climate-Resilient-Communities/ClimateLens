@@ -73,15 +73,3 @@ for i in range(n_chunks):
 chunk1= Path("...")
 cleaned_file_size_bytes = os.path.getsize(chunk1)
 print(f"The size of '{chunk1}': {cleaned_file_size_bytes / (1024 * 1024):.2f} MB")
-
-### Creating sample dataset
-
-first_chunk_path = "..."
-df_first_chunk = pd.read_csv(first_chunk_path)
-
-df_sample = df_first_chunk.head(2736)
-
-sample_path = "..."
-df_sample.to_csv(sample_path, index=False)
-
-print(f"Sample dataset created: {sample_path}")
