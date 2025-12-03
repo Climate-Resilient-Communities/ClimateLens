@@ -42,6 +42,8 @@ ClimateLens/
 ├── src/
 │   ├── LDA/                          # Baseline LDA topic modeling implementation
 │   │   └── ...                       # (LDA model scripts, topic extraction helpers, etc.)
+│   ├── utils/                        # Helper files used throughout the process (some are optional)
+│   │   └── ...
 │   ├── data_preprocessing.py         # Cleans raw social media text, normalizes fields, removes noise
 │   ├── dynamic_topic_modeling.py     # Implements dynamic/temporal topic modeling (e.g., DTM/BERT-based)
 │   ├── emotion_classification.py     # Emotion classifier pipeline (e.g., emotion embeddings + model)
@@ -68,7 +70,7 @@ All code and data should already live inside your AzureML Workspace, the jobs si
 ### **How it works**
 
 * AzureML mounts your existing workspace code and data
-* A job runs your scripts in sequence using `run_all.sh`
+* A job runs your scripts in sequence using `run_scripts.sh`
 * No local uploads or `.env` access are required
 * Logs stream back to your terminal
 
