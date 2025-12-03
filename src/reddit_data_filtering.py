@@ -2,6 +2,7 @@ import csv
 import json
 import os
 from pathlib import Path
+from dotenv import load_dotenv
 
 search_terms = [
   "climate change", "global warming",
@@ -23,9 +24,33 @@ def contains_keywords(text, keywords):
     lower = text.lower()
     return any(term in lower for term in keywords)
 
+def load_environment():
+  try:
+    import google.colab
+    from google.colab import drive
+    drive.mount("/content/drive")
+
+    base_path = "..."
+    env_path = Path(base_path) / ".env"
+  except ImportError:
+    env_path = Path(__file__).resolve().parent / ".env"
+
+  if env_path.exists():
+    load_dotenv(env_path)
+    print("Loading environment variables")
+    data_dir, reddit_raw_dir = os.getenv("DATA_DIR"), os.getenv("REDDIT_RAW_DIR")
+  else:
+    raise FileNotFoundError(f".env file not found at {env_path}")
+
+  return data_dir, reddit_raw_dir
+
+data_dir, reddit_raw_dir = load_environment()
+if not data_dir or not reddit_raw_dir:
+    raise EnvironmentError("DATA_DIR and CODE_DIR must be set in the .env file.")
+
 ### Batch process folder of JSONL files
-input_folder = Path("...")
-output_folder = Path("...")
+input_folder = reddit_raw_dir
+output_folder = data_dir
 output_folder.mkdir(exist_ok=True)
 
 # Iterating over all .jsonl files in input folder

@@ -50,7 +50,7 @@ def load_datasets(data_path, prefix, datasets):
 
 datasets = {}
 load_datasets(data_dir, "filtered_", datasets)
-load_datasets(data_dir, "clean_", datasets)
+load_datasets(data_dir, "_clean", datasets)
 
 print("Collected Datasets:")
 for key, value in datasets.items():

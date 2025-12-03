@@ -1,10 +1,36 @@
 import csv
 import json
+import os
 from pathlib import Path
 import pandas as pd
+from dotenv import load_dotenv
 
-input_path = Path("...") # raw NDJSON Twitter file
-output_path = Path("...") # cleaned CSV path
+def load_environment():
+  try:
+    import google.colab
+    from google.colab import drive
+    drive.mount("/content/drive")
+
+    base_path = "..."
+    env_path = Path(base_path) / ".env"
+  except ImportError:
+    env_path = Path(__file__).resolve().parent / ".env"
+
+  if env_path.exists():
+    load_dotenv(env_path)
+    print("Loading environment variables")
+    data_dir, twitter_raw_dir = os.getenv("DATA_DIR"), os.getenv("TWITTER_RAW_DIR")
+  else:
+    raise FileNotFoundError(f".env file not found at {env_path}")
+
+  return data_dir, twitter_raw_dir
+
+data_dir, twitter_raw_dir = load_environment()
+if not data_dir or not twitter_raw_dir:
+    raise EnvironmentError("DATA_DIR and TWITTER_RAW_DIR must be set in the .env file.")
+
+input_path = Path(twitter_raw_dir) # raw NDJSON Twitter file
+output_path = Path(data_dir) / "twitter_climate_clean.csv" # cleaned CSV path
 
 # preview first 100 lines
 preview_rows = []
