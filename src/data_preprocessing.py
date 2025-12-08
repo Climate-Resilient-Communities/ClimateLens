@@ -29,7 +29,7 @@ SWEAR_VARIANTS = [
     'ass', 'asshole', 'a**', 'arse',
     'bitch', 'b*tch',
     'damn', 'd*mn',
-    'crap', 'dick', 'piss', 'prick', 'whore', 'slut', 'cunt', 'mf', 'motherfucker',
+    'crap', 'dick', 'pussy', 'piss', 'prick', 'whore', 'slut', 'cunt', 'mf', 'motherfucker',
 ]
 
 ADDITIONAL_STOPWORDS = [
@@ -92,12 +92,9 @@ def loading_datasets(datasets):
         datasets: Dictionary of {name: file_path}
 
     Returns:
-        Tuple of (dfs_dict, docs_dict) where:
-            dfs_dict: {name: DataFrame}
-            docs_dict: {name: list_of_documents}
+        dict: {name: DataFrame}
     """
     dfs = {}
-    docs_dict = {}
 
     for name, path in datasets.items():
         try:
@@ -116,12 +113,9 @@ def loading_datasets(datasets):
             continue
 
         print(f'Loaded {name}')
-
-        docs = list(df[text_col].values)
         dfs[name] = df
-        docs_dict[name] = docs
 
-    return dfs, docs_dict
+    return dfs
 
 
 def remove_consecutive_repeats(tokens):
@@ -231,7 +225,7 @@ def run_pipeline(data_path):
         print(f'  {key}: {value}')
 
     # Load datasets
-    dfs, docs_dict = loading_datasets(datasets)
+    dfs = loading_datasets(datasets)
     print(f"\n{len(dfs)} dataframes loaded successfully\n")
 
     # Process each dataset
