@@ -7,7 +7,7 @@ ml = MLClient.from_config(credential=DefaultAzureCredential())
 
 job = command(
     code=".", # repo root
-    command="bash azureml/run_samples.sh",
+    command="bash azureml/run_scripts.sh",
     compute="cpu-cluster",
     environment=Environment(
     name="bertopic-py310",

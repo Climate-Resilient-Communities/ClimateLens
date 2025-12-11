@@ -29,14 +29,15 @@ SWEAR_VARIANTS = [
     'ass', 'asshole', 'a**', 'arse',
     'bitch', 'b*tch',
     'damn', 'd*mn',
-    'crap', 'dick', 'pussy', 'piss', 'prick', 'whore', 'slut', 'cunt', 'mf', 'motherfucker',
+    'crap', 'dick', 'pussy', 'piss', 'prick',
+    'whore', 'slut', 'cunt', 'mf', 'motherfucker',
 ]
 
 ADDITIONAL_STOPWORDS = [
     'rt', 'tweet', 'repost', 'replied', 'comments', 'comment', 'upvote', 'downvote', 'subreddit',
     'thread', 'user', 'followers', 'post', 'share', 'like', 'reply', 'hashtag', 'hashtags', 'link',
     'bio', 'mention', 'tagged', 'followed', 'following', 'message', 'profile', 'climate', 'change',
-    'global', 'warming', 'yes', 'great',
+    'global', 'warming', 'yes', 'great', 'of',
     'love', 'great', 'thank', 'you', 'good', 'like', 'go',
     # Twitter-specific artifacts that slip through
     'https', 'http', 'co', 'amp', 't', 'www', 'url', 'pic', 'twitter', 'com',
