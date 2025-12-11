@@ -1,20 +1,37 @@
-name: bertopic
+name: ke-bert-mpnet
 channels:
   - conda-forge
   - defaults
 dependencies:
-  - python=3.10
+  - python=3.10.18
   - pip
-  - numpy=1.26.4
-  - pandas=2.2.2
-  - scikit-learn=1.5.1
-  - umap-learn=0.5.6
+  - numpy=1.24.3
+  - pandas=2.3.1
+  - scipy=1.15.3
+  - scikit-learn=1.7.1
+  - umap-learn=0.5.3
+  - matplotlib=3.10.5
+  - seaborn=0.13.2
+  - tqdm=4.67.1
   - pip:
-      - bertopic==0.16.4
-      - hdbscan==0.8.38.post1
-      - sentence-transformers==3.0.1
-      - torch==2.3.1
+      - bertopic==0.16.0
+      - nltk==3.9.0
+      - pillow==12.0.0
+      - hdbscan==0.8.40
+      - pynndescent==0.5.13
+      - sentence-transformers==5.1.0
+      - tokenizers==0.22.1
+      - torch==2.9.0
+      - torchvision==0.24.0
       - mlflow==2.14.3
-      - pyarrow==17.0.0
-      - plotly==5.23.0
+      - pyarrow # good to keep undefined because might clash with bertopic version
+      - plotly==6.3.0
       - kaleido==0.2.1
+      - python-dotenv==1.1.0
+      - emoji==0.6.0
+      - transformers==4.57.3
+      - wordcloud==1.9.2
+      - huggingface-hub==0.36.0
+      - regex
+      - joblib
+      - python-dateutil
