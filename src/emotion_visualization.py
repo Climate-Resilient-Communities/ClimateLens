@@ -25,6 +25,7 @@ import warnings
 from pathlib import Path
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple
+from dotenv import load_dotenv
 
 import pandas as pd
 import numpy as np
@@ -67,8 +68,8 @@ EMOTION_LINE_COLORS = {
 
 # Required columns for each dataset type
 REQUIRED_COLUMNS = {
-    'twitter': ['cleaned_text', 'created_at'],
-    'reddit': ['cleaned_text', 'created_utc']
+    'twitter': ['created_at', 'text'],
+    'reddit': ['body', 'created_utc']
 }
 
 
@@ -88,6 +89,8 @@ def load_environment() -> Dict[str, Path]:
     Returns:
         Dictionary with 'data_dir' and 'output_dir' paths
     """
+    env_path = Path(__file__).resolve().parent / ".env"
+    load_dotenv(env_path)
     # Check for environment variables first
     data_dir = os.environ.get('DATA_DIR')
     output_dir = os.environ.get('OUTPUT_DIR')
@@ -357,37 +360,33 @@ def add_emotions_to_datasets(
 ) -> Dict[str, pd.DataFrame]:
     """
     Run emotion detection on all datasets and add results as new columns.
-    
     Args:
         datasets: Dictionary of DataFrames to process
         emotion_classifier: HuggingFace pipeline
-        
     Returns:
         Updated dictionary with emotion columns added to each DataFrame
     """
     updated_datasets = {}
-    
     for name, df in datasets.items():
         print(f"\n  Processing {name} ({len(df):,} rows)...")
-        
         # Get cleaned texts
-        texts = df['cleaned_text'].fillna('').tolist()
-        
+        text_cols=('body', 'text')
+        text_col = next((c for c in text_cols if c in df.columns), None)
+        texts = df[text_col].fillna('').tolist()
         # Detect emotions
         emotion_results = detect_emotions_batch(texts, emotion_classifier)
-        
+        # Drop any existing emotion columns to avoid duplicates
+        emotion_cols = ['emotion_label', 'emotion_confidence'] + EMOTIONS
+        df_clean = df.drop(columns=[c for c in emotion_cols if c in df.columns], errors='ignore')
         # Concatenate results to original dataframe
-        df_with_emotions = pd.concat([df, emotion_results], axis=1)
-        
+        df_with_emotions = pd.concat([df_clean, emotion_results], axis=1)
         # Print distribution
         dist = df_with_emotions['emotion_label'].value_counts()
         print(f"    Emotion distribution:")
         for emotion, count in dist.items():
             pct = count / len(df_with_emotions) * 100
             print(f"      {emotion}: {count:,} ({pct:.1f}%)")
-        
         updated_datasets[name] = df_with_emotions
-    
     return updated_datasets
 
 
@@ -476,10 +475,13 @@ def generate_wordclouds_for_dataset(
     """
     saved_files = []
     emotions = sorted(df['emotion_label'].unique())
+
+    text_cols=('body', 'text')
+    text_col = next((c for c in text_cols if c in df.columns), None)
     
     # Create word cloud for each emotion
     for emotion in emotions:
-        emotion_texts = df[df['emotion_label'] == emotion]['cleaned_text'].fillna('').tolist()
+        emotion_texts = df[df['emotion_label'] == emotion][text_col].fillna('').tolist()
         
         wordcloud = create_emotion_wordcloud(emotion_texts, emotion, dataset_name)
         
@@ -497,7 +499,9 @@ def generate_wordclouds_for_dataset(
         print(f"    Saved: {filename}")
     
     # Create combined word cloud
-    all_texts = df['cleaned_text'].fillna('').tolist()
+    text_cols=('body', 'text')
+    text_col = next((c for c in text_cols if c in df.columns), None)
+    all_texts = df[text_col].fillna('').tolist()
     combined_text = ' '.join(all_texts)
     
     if combined_text.strip():
@@ -849,7 +853,9 @@ def run_pipeline() -> None:
         datasets = load_datasets(file_paths)
     except (FileNotFoundError, KeyError) as e:
         print(f"\nERROR: Error loading data: {e}")
-        sys.exit(1)
+        #return
+        raise SystemExit(1)
+
     
     # Step 3: Load emotion model
     print("\n[3/7] Loading emotion detection model...")
