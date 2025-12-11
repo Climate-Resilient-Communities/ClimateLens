@@ -15,10 +15,6 @@ def load_environment():
     from google.colab import drive
     drive.mount("/content/drive")
 
-    print("Installing dependencies...")
-    !pip install -q emoji==0.6.0
-    print("Environment setup complete.")
-
     base_path = "..."
     env_path = Path(base_path) / ".env"
   except ImportError:
@@ -169,7 +165,7 @@ def main():
   for name, df in dfs.items():
     print(f"\n{'=' * 50}\nAnalyzing {name}\n{'=' * 50}")
 
-    df = sentiment_analysis(df, analyzer=models["sentiment"])
+    #df = sentiment_analysis(df, analyzer=models["sentiment"])
 
     emotion_model = choose_emotion_model(name, models)
     try:
