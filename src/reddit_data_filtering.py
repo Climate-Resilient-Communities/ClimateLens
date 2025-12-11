@@ -49,8 +49,8 @@ if not data_dir or not reddit_raw_dir:
     raise EnvironmentError("DATA_DIR and CODE_DIR must be set in the .env file.")
 
 ### Batch process folder of JSONL files
-input_folder = reddit_raw_dir
-output_folder = data_dir
+input_folder = Path(reddit_raw_dir)
+output_folder = Path(data_dir)
 output_folder.mkdir(exist_ok=True)
 
 # Iterating over all .jsonl files in input folder

@@ -234,22 +234,22 @@ def save_dtm_outputs(topics_over_time, fig, name, dtm_dir):
         dtm_dir: Output directory path
     """
     if topics_over_time is None or fig is None:
-        print(f"     No DTM outputs to save for {name}")
+        print(f"No DTM outputs to save for {name}")
         return
     
     try:
         # Save CSV data for further analysis
         csv_path = Path(dtm_dir) / f"{name}_topics_over_time.csv"
         topics_over_time.to_csv(csv_path, index=False)
-        print(f"    Saved DTM data: {csv_path}")
+        print(f"Saved DTM data: {csv_path}")
         
         # Save interactive HTML visualization
         html_path = Path(dtm_dir) / f"{name}_topics_over_time.html"
         fig.write_html(str(html_path))
-        print(f"    Saved DTM visualization: {html_path}")
+        print(f"Saved DTM visualization: {html_path}")
         
     except Exception as e:
-        print(f"    Error saving DTM outputs for {name}: {e}")
+        print(f"Error saving DTM outputs for {name}: {e}")
         traceback.print_exc()
 
 
