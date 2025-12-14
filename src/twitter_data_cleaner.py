@@ -29,7 +29,7 @@ data_dir, twitter_raw_dir = load_environment()
 if not data_dir or not twitter_raw_dir:
     raise EnvironmentError("DATA_DIR and TWITTER_RAW_DIR must be set in the .env file.")
 
-input_path = Path(twitter_raw_dir) # raw NDJSON Twitter file
+input_path = Path(twitter_raw_dir) / "climate.jsonl" # raw NDJSON Twitter file
 output_path = Path(data_dir) / "twitter_climate_clean.csv" # cleaned CSV path
 
 # preview first 100 lines

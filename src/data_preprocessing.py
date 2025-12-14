@@ -267,8 +267,7 @@ def run_pipeline(data_path):
 # =============================================================================
 
 if __name__ == "__main__":
-    # Load environment variables
-    env_path = Path(__file__).resolve().parent.parent / ".env"
+    env_path = Path(__file__).resolve().parent / ".env"
     load_dotenv(env_path)
     data_path = os.getenv("DATA_DIR")
 

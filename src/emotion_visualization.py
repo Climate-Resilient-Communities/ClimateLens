@@ -29,6 +29,7 @@ from dotenv import load_dotenv
 
 import pandas as pd
 import numpy as np
+from transformers import pipeline
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 from wordcloud import WordCloud
@@ -79,48 +80,52 @@ REQUIRED_COLUMNS = {
 
 def load_environment() -> Dict[str, Path]:
     """
-    Load environment configuration and determine data/output directories.
-    
-    Works in multiple environments:
-    - Local development (uses DATA_DIR and OUTPUT_DIR env vars)
-    - Google Colab (detects and uses Drive paths)
-    - Azure/Cloud (uses environment variables)
-    
-    Returns:
-        Dictionary with 'data_dir' and 'output_dir' paths
+    Load environment variables.
+    - Local: read from .env
+    - AzureML: force outputs/ paths
     """
-    env_path = Path(__file__).resolve().parent / ".env"
-    load_dotenv(env_path)
-    # Check for environment variables first
-    data_dir = os.environ.get('DATA_DIR')
-    output_dir = os.environ.get('OUTPUT_DIR')
-    
-    if data_dir and output_dir:
-        return {
-            'data_dir': Path(data_dir),
-            'output_dir': Path(output_dir)
-        }
-    
-    # Check if running in Colab
-    try:
-        import google.colab
-        # Running in Colab - use Drive paths
-        from google.colab import drive
-        drive.mount('/content/drive', force_remount=False)
-        
-        return {
-            'data_dir': Path('/content/drive/MyDrive/ClimateLens/data'),
-            'output_dir': Path('/content/drive/MyDrive/ClimateLens/visualizations')
-        }
-    except ImportError:
-        pass
-    
-    # Default local paths
-    return {
-        'data_dir': Path('./data'),
-        'output_dir': Path('./visualizations')
-    }
 
+    # Detect AzureML
+    in_azureml = (
+        "AZUREML_RUN_ID" in os.environ
+        or "AZUREML_EXPERIMENT_ID" in os.environ
+        or "AZUREML_OUTPUT_DIR" in os.environ
+    )
+
+    if in_azureml:
+        print("Running inside AzureML — using outputs/ directories")
+        data_dir = Path("./outputs/data/")
+        output_dir = Path("./outputs/visualizations/")
+
+    else:
+        # Local dev: search for .env upward
+        search_dir = Path(__file__).resolve().parent
+        for parent in [search_dir] + list(search_dir.parents):
+            env_path = parent / ".env"
+            if env_path.exists():
+                load_dotenv(env_path)
+                print(f"Loaded .env from: {env_path}")
+                break
+        else:
+            raise FileNotFoundError("No .env found")
+
+        data_dir = os.environ.get("DATA_DIR")
+        output_dir = os.environ.get("OUTPUT_DIR")
+
+        if not data_dir or not output_dir:
+            raise KeyError("DATA_DIR or OUTPUT_DIR missing in .env")
+
+        data_dir = Path(data_dir)
+        output_dir = Path(output_dir)
+
+    # Ensure directories exist
+    data_dir.mkdir(parents=True, exist_ok=True)
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    return {
+        "data_dir": data_dir,
+        "output_dir": output_dir,
+    }
 
 def create_directories(base_output_dir: Path) -> Dict[str, Path]:
     """

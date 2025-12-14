@@ -284,6 +284,33 @@ def load_environment():
 
     return data_dir, code_dir, JUPYTER
 
+# ===============================
+# DEFAULT DIRECTORIES (local dev)
+# ===============================
+DATA_DIR = "./data"
+OUTPUT_DIR = "./code/visualizations"
+
+# ======================================
+# DETECT IF RUNNING INSIDE AZURE ML JOB
+# ======================================
+IN_AZUREML = (
+    "AZUREML_RUN_ID" in os.environ
+    or "AZUREML_EXPERIMENT_ID" in os.environ
+    or "AZUREML_OUTPUT_DIR" in os.environ
+)
+
+# ======================================
+# OVERRIDE PATHS WHEN INSIDE AZURE ML
+# ======================================
+if IN_AZUREML:
+    DATA_DIR = "outputs/data"
+    OUTPUT_DIR = "outputs/visualizations"
+
+# ======================================
+# ENSURE DIRECTORIES EXIST
+# ======================================
+Path(DATA_DIR).mkdir(parents=True, exist_ok=True)
+Path(OUTPUT_DIR).mkdir(parents=True, exist_ok=True)
 
 def process_datasets(data_path, text_cols=('body', 'text')):
     datasets, dfs, docs_dict, failed = {}, {}, {}, []
@@ -317,25 +344,41 @@ def process_datasets(data_path, text_cols=('body', 'text')):
     return dfs, docs_dict, datasets
 
 
-def create_directories(code_dir):
-    """Create output directories including DTM folder."""
+def create_directories():
+    """
+    Create output directories for BOTH local and AzureML runs.
+
+    Local:
+        ./code/models
+        ./code/visualizations/...
+
+    AzureML:
+        outputs/models
+        outputs/visualizations/...
+    """
+
+    if IN_AZUREML:
+        base = Path("outputs")
+    else:
+        base = Path("./code")
+
     directories = {
-        "models": Path(code_dir) / "models",
-        "IDM": Path(code_dir) / "visualizations" / "IDM",
-        "hierarchies": Path(code_dir) / "visualizations" / "hierarchies",
-        "barcharts": Path(code_dir) / "visualizations" / "barcharts",
-        "dtm": Path(code_dir) / "visualizations" / "dtm",  # NEW: DTM directory
+        "models": base / "models",
+        "IDM": base / "visualizations" / "IDM",
+        "hierarchies": base / "visualizations" / "hierarchies",
+        "barcharts": base / "visualizations" / "barcharts",
+        "dtm": base / "visualizations" / "dtm",
     }
 
     for path in directories.values():
-        os.makedirs(path, exist_ok=True)
+        path.mkdir(parents=True, exist_ok=True)
 
     return (
         directories["models"],
         directories["IDM"],
         directories["hierarchies"],
         directories["barcharts"],
-        directories["dtm"]  # Return DTM directory
+        directories["dtm"],
     )
 
 
@@ -573,13 +616,10 @@ def save_dataframe_inplace(path, df):
 
 def main():
     data_dir, code_dir, JUPYTER = load_environment()
-    if not data_dir or not code_dir:
-        raise EnvironmentError("DATA_DIR and CODE_DIR must be set in the .env file.")
-
     dfs, docs_dict, datasets = process_datasets(data_dir)
 
     # Updated to include dtm_dir
-    model_dir, IDM_dir, hierarchy_dir, barchart_dir, dtm_dir = create_directories(code_dir)
+    model_dir, IDM_dir, hierarchy_dir, barchart_dir, dtm_dir = create_directories()
     dirs = (model_dir, IDM_dir, hierarchy_dir, barchart_dir, dtm_dir)
 
     embeddings_dict = compute_embeddings(docs_dict)
