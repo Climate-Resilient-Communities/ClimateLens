@@ -1,95 +1,148 @@
-import numpy as np
-import pandas as pd
 import os
+import re
+import traceback
+from dotenv import load_dotenv
+from pathlib import Path
+from typing import Dict
+
+import pandas as pd
 from tqdm import tqdm
 import torch
 from transformers import pipeline
 
-import matplotlib
-import matplotlib.pyplot as plt
-import seaborn as sns
+def load_environment() -> Dict[str, Path]:
+    """
+    Load environment variables.
+    - Local: read from .env
+    - AzureML: force outputs/ paths
+    """
 
-paths = {
-    "home": "...", # root path, where this file is
-    "models": "...", #path for models
-    "insights": "...", # static
-    "interactives": "...",
-}
+    # Detect AzureML
+    in_azureml = (
+        "AZUREML_RUN_ID" in os.environ
+        or "AZUREML_EXPERIMENT_ID" in os.environ
+        or "AZUREML_OUTPUT_DIR" in os.environ
+    )
 
-os.makedirs(paths.get("models"), exist_ok=True)
-os.makedirs(paths.get("insights"), exist_ok=True)
-os.makedirs(paths.get("interactives"), exist_ok=True)
+    if in_azureml:
+        print("Running inside AzureML — using outputs/ directories")
+        input_data_dir = Path("./data")               # READ ONLY
+        output_data_dir = Path("./outputs/data")      # WRITE
+        output_vis_dir  = Path("./outputs/visualizations")
+    else:
+        # Local dev: search for .env upward
+        search_dir = Path(__file__).resolve().parent
+        for parent in [search_dir] + list(search_dir.parents):
+            env_path = parent / ".env"
+            if env_path.exists():
+                load_dotenv(env_path)
+                print(f"Loaded .env from: {env_path}")
+                break
+        else:
+            raise FileNotFoundError("No .env found")
 
-def load_datasets(data_path, prefix, datasets):
+        input_data_dir  = Path(os.environ["DATA_DIR"])
+        output_data_dir = Path(os.environ["OUTPUT_DATA_DIR"])
+        output_vis_dir  = Path(os.environ["OUTPUT_VIS_DIR"])
+
+        if not data_dir or not output_dir:
+            raise KeyError("DATA_DIR or OUTPUT_DIR missing in .env")
+
+    # Ensure directories exist
+    output_data_dir.mkdir(parents=True, exist_ok=True)
+    output_vis_dir.mkdir(parents=True, exist_ok=True)
+
+    return {
+        "input_data_dir": input_data_dir,
+        "output_data_dir": output_data_dir,
+        "output_vis_dir": output_vis_dir,
+    }
+
+def process_datasets(data_path):
+    dfs, docs_dict, datasets, failed = {}, {}, {}, []
+
     for file in os.listdir(data_path):
         file_path = os.path.join(data_path, file)
-        
-        if os.path.isfile(file_path):
-            file_name = file.replace(prefix, "").replace(".csv", "")
+
+        if os.path.isfile(file_path) and file.endswith(".csv"):
+            file_name = re.sub(r"(_clean|filtered_)?\.csv$", "", file)
             datasets[file_name] = file_path
-
-datasets = {}
-load_datasets("...", "filtered_", datasets)
-load_datasets("...", "clean_", datasets)
-
-print("Collected Datasets:")
-for key, value in datasets.items():
-    print(f'{key}: {value}\n')
-
-def loading_datasets(datasets):
-    dfs = {}
-    docs_dict = {}
 
     for name, path in datasets.items():
         try:
             df = pd.read_csv(path)
         except Exception as e:
             print(f"Error reading {path}: {e}")
+            failed.append(name)
             continue
 
-        if "body" in df.columns:
-            text_col = "body"
-        elif "text" in df.columns:
-            text_col = "text"
-        else:
+        text_col = next((col for col in ['body', 'text'] if col in df.columns), None)
+
+        if text_col is None:
             print(f"Skipping {name}. No 'body' or 'text' column.")
+            failed.append(name)
             continue
+
+        dfs[name] = df
+        docs_dict[name] = df[df[text_col].notna()][text_col].tolist()
 
         print(f'Loaded {name}')
 
-        docs = list(df[df[text_col].notna()][text_col].values)
+        print(f"\n{len(dfs)}/{len(datasets)} datasets loaded successfully.")
+        if failed:
+          print("Failed to load:", ", ".join(failed))
 
-        dfs[name] = df
-        docs_dict[name] = docs
+    return dfs, docs_dict, datasets, failed
 
-    return dfs, docs_dict
+def load_models():
+    sentiment_model = "finiteautomata/bertweet-base-sentiment-analysis" #heavy twitter-leaning
+    emotion_reddit = "SamLowe/roberta-base-go_emotions" #28 labels
+    emotion_twitter = "boltuix/bert-emotion" #13 labels
+    emotion_general = "cirimus/modernbert-base-go-emotions" #heavy reddit-leaning, 28 labels
 
-dfs, docs_dict = loading_datasets(datasets) # datafames aren't standalone variables
-print(f"{len(list(dfs.keys()))} Dataframes collected")
+    print("Loading sentiment model...", flush=True)
+    sentiment_analyzer = pipeline("text-classification", model=sentiment_model)
 
-"""## **Sentiment & Emotion Analysis**"""
 
-"""
-- ***j-hartmann/emotion-english-distilroberta-base*** - A model fine-tuned for emotion recognition in English text.
-- ***bhadresh-savani/bert-base-go-emotion*** - Another popular model trained on the GoEmotions dataset from Google, which includes 27 emotion labels.
-"""
+    print("Loading twitter emotion model...", flush=True)    
+    emotion_analyzer_twitter = pipeline(
+        "text-classification",
+        model=emotion_twitter,
+        top_k=None # check to see if this works, even with single labels
+    )
 
-model_name = 'finiteautomata/bertweet-base-sentiment-analysis'
-sentiment_analyzer = pipeline("text-classification", model=model_name)
+    print("Loading reddit emotion model...", flush=True)
+    emotion_analyzer_reddit = pipeline(
+        "text-classification",
+        model=emotion_reddit,
+        top_k=None
+    )
 
-model_name = 'SamLowe/roberta-base-go_emotions'
-emotion_analyzer = pipeline("text-classification", model=model_name)
+    print("All pipelines loaded")
 
-def sentiment_analysis(df, text_col, batch_size=128):
-    if text_col not in df.columns:
-        raise ValueError(f"DataFrame must contain a '{text_col}' column")
+    return {
+        "sentiment": sentiment_analyzer,
+        "emotion_twitter": emotion_analyzer_twitter,
+        "emotion_reddit": emotion_analyzer_reddit,
+    }
+
+def choose_emotion_model(dataset_name, models):
+    if "twitter" in dataset_name.lower():
+        return models["emotion_twitter"]
+    return models["emotion_reddit"]
+
+def sentiment_analysis(df, analyzer, text_col=None, batch_size=128):
+    if text_col is None:
+        text_col = next((col for col in ['body', 'text'] if col in df.columns), None)
+        if text_col is None:
+            raise ValueError("No valid text column found")
 
     texts = df[text_col].tolist()
     label, confidence = [], []
 
     for i in tqdm(range(0, len(texts), batch_size)):
         batch = texts[i:i+batch_size]
-        results = sentiment_analyzer(batch, truncation=True, padding=True)
+        results = analyzer(batch, padding=True, truncation=True)
 
         for result in results:
             label.append(result['label'])
@@ -99,176 +152,106 @@ def sentiment_analysis(df, text_col, batch_size=128):
     df['sentiment_proba'] = confidence
     return df
 
-def emotion_analysis(df, text_col, batch_size=128):
-    if text_col not in df.columns:
-        raise ValueError(f"DataFrame must contain a '{text_col}' column")
+def emotion_analysis(df, analyzer, text_col=None, batch_size=128, multi=False):
+    if text_col is None:
+        text_col = next((col for col in ['body', 'text'] if col in df.columns), None)
+        if text_col is None:
+            raise ValueError("No valid text column found")
 
     texts = df[text_col].tolist()
-    label, confidence = [], []
+    label, confidence, all_emotions = [], [], []
 
     for i in tqdm(range(0, len(texts), batch_size)):
         batch = texts[i:i+batch_size]
-        results = emotion_analyzer(batch, truncation=True, padding=True)
+        results = analyzer(batch, padding=True, truncation=True, max_length=512)
 
-        for result in results:
-            label.append(result['label'])
-            confidence.append(result['score'])
+        if multi:
+            for emotion_list in results:
+                top_k = sorted(emotion_list, key=lambda x: x['score'], reverse=True)[:3]
+                label.append(top_k[0]['label'])
+                confidence.append(top_k[0]['score'])
+                all_emotions.append(top_k)
+        else:
+            for result in results:
+                label.append(result['label'])
+                confidence.append(result['score'])
 
     df['emotion_label'] = label
     df['emotion_proba'] = confidence
+    if multi:
+        df['all_emotions'] = all_emotions
+        df['top3_emotions'] = df['all_emotions'].apply(
+            lambda lst: ', '.join(f"{x['label']} ({x['score']:.2f})" for x in lst)
+            )
+
     return df
 
-for name, df in dfs.items():
-    if 'emotion_proba' in df.columns:
-        print(f'{name} already computed. Passing to next file\n')
-        continue
+def main():
+    # ======================================
+    # LOAD ENVIRONMENT (THIS IS THE KEY)
+    # ======================================
+    env = load_environment()
+    input_data_dir  = env["input_data_dir"]     # data (input)
+    output_data_dir = env["output_data_dir"]    # outputs/data (Azure)
+    output_vis_dir  = env["output_vis_dir"]     # outputs/visualizations
 
-    print(f'Computing {name}')
-    text_col = 'body' if 'body' in df.columns else 'text'
+    print("INPUT_DATA_DIR =", input_data_dir)
+    print("OUTPUT_DATA_DIR =", output_data_dir)
+    print("OUTPUT_VIS_DIR =", output_vis_dir)
 
-    if 'emotion' not in df.columns:
-        df['emotion'] = None
-    if 'sentiment' not in df.columns:
-        df['sentiment'] = None
+    # ======================================
+    # LOAD DATA
+    # ======================================
+    dfs, docs_dict, datasets, failed = process_datasets(input_data_dir)
 
-    non_null_idx = df[df[text_col].notna()].index
+    if not dfs:
+        raise RuntimeError("No datasets loaded — aborting")
 
-    subset_df = df.loc[non_null_idx]
-    subset_df = sentiment_analysis(subset_df, text_col=text_col)
-    subset_df = emotion_analysis(subset_df, text_col=text_col)
+    # ======================================
+    # LOAD MODELS
+    # ======================================
+    models = load_models()
 
-    df.loc[non_null_idx, 'sentiment_label'] = subset_df['sentiment_label']
-    df.loc[non_null_idx, 'sentiment_proba'] = subset_df['sentiment_proba']
-    df.loc[non_null_idx, 'emotion_label'] = subset_df['emotion_label']
-    df.loc[non_null_idx, 'emotion_proba'] = subset_df['emotion_proba']
+    # ======================================
+    # EMOTION ANALYSIS + SAVE DATA
+    # ======================================
+    for name, df in dfs.items():
+        print(f"\n{'=' * 50}\nAnalyzing {name}\n{'=' * 50}")
 
-    df.to_csv(datasets[name], index=False)
+        emotion_model = choose_emotion_model(name, models)
 
-"""# **Sentiment Distribution in Generated Texts**
-- Neutral sentiment texts are more frequent than negative sentiment texts.
-- Negative sentiment texts are more frequent than positive sentiment texts.
-"""
+        try:
+            df = emotion_analysis(df, emotion_model, multi=True)
+        except TypeError:
+            print(f"Multi-emotion failed for {name}, retrying single-label...")
+            df = emotion_analysis(df, emotion_model, multi=False)
+        except Exception as e:
+            print(f"Error analyzing {name}: {e}")
+            print(traceback.format_exc())
+            continue
 
-import matplotlib
-import matplotlib.pyplot as plt
-import seaborn as sns
+        dfs[name] = df
 
-sent_dist = os.path.join(paths.get("insights"), "sentiment distribution/")
-os.makedirs(sent_dist, exist_ok=True)
+        out_path = output_data_dir / f"{name}_with_emotions.csv"
+        df.to_csv(out_path, index=False)
+        print(f"Saved dataset: {out_path}")
 
-sent_vio = os.path.join(paths.get("insights"), "sentiment probability violins/")
-os.makedirs(sent_vio, exist_ok=True)
+    # ======================================
+    # VISUALIZATIONS (outputs/visualizations)
+    # ======================================
+    output_vis_dir.mkdir(parents=True, exist_ok=True)
 
-sent_his = os.path.join(paths.get("insights"), "sentiment probability histograms/")
-os.makedirs(sent_his, exist_ok=True)
+    for name, df in dfs.items():
+        try:
+            fig = df["emotion_label"].value_counts().plot(kind="bar").get_figure()
+            out_file = output_vis_dir / f"{name}_emotion_counts.png"
+            fig.savefig(out_file, dpi=200, bbox_inches="tight")
+            fig.clf()
+            print(f"Saved visualization: {out_file}")
+        except Exception as e:
+            print(f"Visualization failed for {name}: {e}")
 
-save_dir = sent_dist
+    return dfs, docs_dict, datasets
 
-def create_pie_plot(df,title):
-    sentiment_counts = df['sentiment_label'].value_counts()
-    sentiment_counts.plot(
-        kind='pie',
-        autopct='%1.1f%%',
-        colors=['skyblue', 'lightcoral', 'lightgreen'],
-        labels=sentiment_counts.index
-    )
-    plt.title(title)
-
-for name, df in dfs.items(): # saving each seperately
-    plt.figure(figsize=(6, 6))
-    create_pie_plot(df, name)
-    file_path = os.path.join(save_dir, f"{name}_sentiment_pie.png")
-    plt.savefig(file_path, dpi=300)
-    plt.close()
-    print(f"Saved: {file_path}")
-
-# one big combined visual
-n_datasets = len(dfs)
-plt.figure(figsize=(6, 4 * n_datasets))
-
-for idx, (name, df) in enumerate(dfs.items(), start=1):
-    plt.subplot(n_datasets, 1, idx)
-    create_pie_plot(df, name)
-
-plt.tight_layout()
-combined_path = os.path.join(save_dir, "all_sentiment_pies.png")
-plt.savefig(combined_path, dpi=300)
-plt.close()
-
-print(f"Combined visualization saved to: {combined_path}")
-
-"""# **Sentiment Probability Distribution by Sentiment Label**
-- Positive sentiment texts are labeled with greater certainty than negative sentiment texts.
-- Negative sentiment texts are labeled with greater certainty than neutral sentiment texts.
-"""
-
-save_dir=sent_vio
-
-def create_violin_plot(df, title):
-    sns.violinplot(
-        data=df,
-        x='sentiment_proba',
-        y='sentiment_label',
-        inner='box',
-        palette='husl',
-        hue='sentiment_label'
-    )
-    sns.despine(top=True, right=True, bottom=True, left=True)
-    plt.title(title)
-
-for name, df in dfs.items():
-    plt.figure(figsize=(8, 6))
-    create_violin_plot(df, name)
-    file_path = os.path.join(save_dir, f"{name}_sentiment_violin.png")
-    plt.savefig(file_path, dpi=300)
-    plt.close()
-    print(f"Saved: {file_path}")
-
-n_datasets = len(dfs)
-plt.figure(figsize=(8, 6 * n_datasets))
-
-for idx, (name, df) in enumerate(dfs.items(), start=1):
-    plt.subplot(n_datasets, 1, idx)
-    create_violin_plot(df, name)
-
-plt.tight_layout()
-combined_path = os.path.join(save_dir, "all_sentiment_violins.png")
-plt.savefig(combined_path, dpi=300)
-plt.close()
-
-print(f"Combined visualization saved to: {combined_path}")
-
-save_dir=sent_his
-
-def create_histplot(df, title):
-    sns.histplot(
-        x='sentiment_proba',
-        hue='sentiment_label',
-        data=df,
-        element='step'
-    )
-    plt.title(title)
-    plt.xlabel('Sentiment Probability')
-    plt.ylabel('Frequency')
-
-for name, df in dfs.items():
-    plt.figure(figsize=(12, 5))
-    create_histplot(df, name)
-    file_path = os.path.join(save_dir, f"{name}_sentiment_hist.png")
-    plt.savefig(file_path, dpi=300)
-    plt.close()
-    print(f"Saved: {file_path}")
-
-n_datasets = len(dfs)
-plt.figure(figsize=(12, 4 * n_datasets))
-
-for idx, (name, df) in enumerate(dfs.items(), start=1):
-    plt.subplot(n_datasets, 1, idx)
-    create_histplot(df, name)
-
-plt.tight_layout()
-combined_path = os.path.join(save_dir, "all_sentiment_hists.png")
-plt.savefig(combined_path, dpi=300)
-plt.close()
-
-print(f"Combined visualization saved to: {combined_path}")
+if __name__ == "__main__":
+    dfs, docs_dict, datasets = main()

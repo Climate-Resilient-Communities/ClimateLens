@@ -1,6 +1,6 @@
 ### ML & NLP
 scikit-learn==1.5.1  # stopwords
-torch==2.3.1         # needed for bertopic
+torch==2.2.2         # needed for bertopic
 sentence-transformers==3.0.1 # Models for embedding sentences into vectors
 umap-learn==0.5.6    # Non-linear dimensionality reduction for visualizations
 hdbscan==0.8.38.post1 # Density-based clustering algorithm
@@ -15,8 +15,11 @@ pandas==2.2.2        # Data manipulation and analysis
 ### Data Visualization
 
 # Interactive plotting and visualizations
+matplotlib==3.10.0
+seaborn==0.13.2
 plotly==5.23.0       # Visualization library for creating interactive plots
 kaleido==0.2.1       # For saving plots as PNG, PDF, etc.
+tqdm==4.67.1         # Progress bars
 
 ### Code Quality & Formatting
 black                # Auto-formatting Python code

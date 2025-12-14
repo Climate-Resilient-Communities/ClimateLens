@@ -1,8 +1,8 @@
-import os
-import pandas as pd
-import json
 import csv
+import json
+import os
 from pathlib import Path
+from dotenv import load_dotenv
 
 search_terms = [
   "climate change", "global warming",
@@ -17,57 +17,44 @@ search_terms = [
   "post-traumatic stress", "PTSD"
 ]
 
-# === CONFIGURATION ===
-input_file = Path("...")  # Change to another file when done
-output_file = Path("...")
-
 def contains_keywords(text, keywords):
     """Checks if any keyword appears in the given text."""
     if not text:
         return False
-    text = text.lower()
-    return any(term in text for term in keywords)
+    lower = text.lower()
+    return any(term in lower for term in keywords)
 
-with open(input_file, "r", encoding="utf-8") as f:
-    for i, line in enumerate(f):
-        if i >= 5:
-            break
-        try:
-            entry = json.loads(line)
-            print(json.dumps(entry, indent=2))  # Pretty-print for inspection
-        except json.JSONDecodeError:
-            print("Skipping malformed line")
+def load_environment():
+  try:
+    import google.colab
+    from google.colab import drive
+    drive.mount("/content/drive")
 
-with open(output_file, "w", newline='', encoding="utf-8") as csv_out:
-    writer = csv.DictWriter(csv_out, fieldnames=["subreddit", "body", "created_utc"])
-    writer.writeheader()
+    base_path = "..."
+    env_path = Path(base_path) / ".env"
+  except ImportError:
+    env_path = Path(__file__).resolve().parent / ".env"
 
-    with open(input_file, "r", encoding="utf-8") as f:
-        for line in f:
-            try:
-                entry = json.loads(line)
-                body = entry.get("body", "")
-                if contains_keywords(body, search_terms):
-                    writer.writerow({
-                        "subreddit": entry.get("subreddit"),
-                        "body": body,
-                        "created_utc": entry.get("created_utc")
-                    })
-            except json.JSONDecodeError:
-                continue  # skip malformed lines
+  if env_path.exists():
+    load_dotenv(env_path)
+    print("Loading environment variables")
+    data_dir, reddit_raw_dir = os.getenv("DATA_DIR"), os.getenv("REDDIT_RAW_DIR")
+  else:
+    raise FileNotFoundError(f".env file not found at {env_path}")
 
-df = pd.read_csv("...")
+  return data_dir, reddit_raw_dir
 
-total_rows = len(df)
-print("Total rows:", total_rows)
+data_dir, reddit_raw_dir = load_environment()
+if not data_dir or not reddit_raw_dir:
+    raise EnvironmentError("DATA_DIR and CODE_DIR must be set in the .env file.")
 
-df.head()
-
-input_folder = Path("...")
-output_folder = Path("...")
+### Batch process folder of JSONL files
+input_folder = Path(reddit_raw_dir)
+output_folder = Path(data_dir)
 output_folder.mkdir(exist_ok=True)
 
 # Iterating over all .jsonl files in input folder
+# this for loop works, but can be improved for logic and readability
 for file in os.listdir(input_folder):
     if not file.endswith(".jsonl"):
         continue
@@ -88,6 +75,7 @@ for file in os.listdir(input_folder):
         print(f"Skipping unreadable or empty file: {file}")
         continue
 
+    # Determine file type
     is_comment = "body" in first_valid_line
     type_tag = "comments" if is_comment else "submissions"
     subreddit = first_valid_line.get("subreddit", "unknown").lower()
