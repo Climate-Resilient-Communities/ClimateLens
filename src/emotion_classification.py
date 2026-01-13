@@ -163,7 +163,7 @@ def emotion_analysis(df, analyzer, text_col=None, batch_size=128, multi=False):
 
     for i in tqdm(range(0, len(texts), batch_size)):
         batch = texts[i:i+batch_size]
-        results = analyzer(batch, padding=True, truncation=True, max_length=512)
+        results = analyzer(batch, padding=True, truncation=True, max_length=256)
 
         if multi:
             for emotion_list in results:
@@ -232,6 +232,7 @@ def main():
 
         dfs[name] = df
 
+        # ✅ SAVE DATA INTO outputs/data
         out_path = output_data_dir / f"{name}_with_emotions.csv"
         df.to_csv(out_path, index=False)
         print(f"Saved dataset: {out_path}")
