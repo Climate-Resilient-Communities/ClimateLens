@@ -9,7 +9,7 @@ from datetime import datetime
 import pandas as pd
 from dotenv import load_dotenv
 
-#!pip install -q bertopic sentence-transformers umap-learn hdbscan #cohere
+# !pip install -q bertopic sentence-transformers umap-learn hdbscan #cohere
 #import cohere
 #from bertopic.representation import Cohere
 from bertopic import BERTopic
@@ -20,7 +20,6 @@ from umap import UMAP
 from hdbscan import HDBSCAN
 
 #warnings.filterwarnings("ignore")
-
 
 # =============================================================================
 # CONFIGURATION
@@ -41,13 +40,12 @@ DATASET_PARAMS = {
     "default": {
         "min_df": 0.05,
         "max_df": 0.90,
-        "n_neighbors": 6,
-        "min_cluster_size": 7,
-        "min_topic_size": 7,
-        "nr_topics": 30
+        "n_neighbors": 15,
+        "min_cluster_size": 70,
+        "min_topic_size": 100,
+        "nr_topics": "auto"
     }
 }
-
 
 # =============================================================================
 # DYNAMIC TOPIC MODELING FUNCTIONS
@@ -132,7 +130,6 @@ def prepare_timestamps(dfs, name):
         traceback.print_exc()
         return None
 
-
 def calculate_optimal_bins(timestamps, min_bins=10, max_bins=50):
     """
     Calculate optimal number of temporal bins based on data time span.
@@ -163,7 +160,6 @@ def calculate_optimal_bins(timestamps, min_bins=10, max_bins=50):
     optimal_bins = max(min_bins, min(max_bins, suggested_bins))
     
     return optimal_bins
-
 
 def perform_dynamic_topic_modeling(topic_model, docs, timestamps, name, nr_bins=None, top_n_topics=10):
     """
@@ -222,7 +218,6 @@ def perform_dynamic_topic_modeling(topic_model, docs, timestamps, name, nr_bins=
         traceback.print_exc()
         return None, None
 
-
 def save_dtm_outputs(topics_over_time, fig, name, dtm_dir):
     """
     Save DTM outputs: CSV data and HTML visualization.
@@ -251,7 +246,6 @@ def save_dtm_outputs(topics_over_time, fig, name, dtm_dir):
     except Exception as e:
         print(f"Error saving DTM outputs for {name}: {e}")
         traceback.print_exc()
-
 
 # =============================================================================
 # ORIGINAL FUNCTIONS (with minor updates)
@@ -343,7 +337,6 @@ def process_datasets(data_path, text_cols=('body', 'text')):
 
     return dfs, docs_dict, datasets
 
-
 def create_directories():
     """
     Create output directories for BOTH local and AzureML runs.
@@ -381,17 +374,26 @@ def create_directories():
         directories["dtm"],
     )
 
-
 def compute_embeddings(docs_dict):
-    embedding_model_name = "sentence-transformers/all-MiniLM-L12-v2"
-    embedding_model = SentenceTransformer(embedding_model_name)
+    DEFAULT_EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L12-v2"
+    TWITTER_EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L12-v2"
+
     embeddings_dict = {}
+    embedding_models = {}
+
     for name, docs in docs_dict.items():
-        print(f'Computing {name} embeddings:')
-        embeddings_dict[name] = embedding_model.encode(docs, show_progress_bar=True)
+        model_name = DEFAULT_EMBEDDING_MODEL
 
-    return embeddings_dict
+        if model_name not in embedding_models:
+            embedding_models[model_name] = SentenceTransformer(model_name)
 
+        embedding_model = embedding_models[model_name]
+
+        print(f"Computing {name} embeddings using {model_name}...")
+        embeddings_dict[name] = embedding_model.encode(docs, batch_size=128, show_progress_bar=True)
+        embedding_models[name] = embedding_model
+
+    return embeddings_dict, embedding_models
 
 def create_submodels(params=None):
     params = params or {
@@ -403,7 +405,10 @@ def create_submodels(params=None):
     }
 
     # Twitter-specific stopwords to filter artifacts that slip through preprocessing
-    twitter_stopwords = ['https', 'http', 'co', 'rt', 'amp', 't', 'www', 'url', 'pic', 'twitter', 'com', 'ru']
+    twitter_stopwords = [
+        'https', 'http', 'co', 'rt', 'amp', 't', 'www', 'url', 'pic',
+        'twitter', 'com', 'ru', 'tldrs'
+        ]
 
     vectorizer_model = CountVectorizer(
         ngram_range=(1, 2),
@@ -422,11 +427,12 @@ def create_submodels(params=None):
 
     hdbscan_model = HDBSCAN(
         min_cluster_size=params["min_cluster_size"],
+        min_samples=10,
         metric='euclidean',
         prediction_data=True
     )
 
-    mmr_model = MaximalMarginalRelevance(diversity=0.1)
+    mmr_model = MaximalMarginalRelevance(diversity=0.3)
 
     cohere_model = cohere_integration()
     if cohere_model:
@@ -436,7 +442,6 @@ def create_submodels(params=None):
         representation_model = mmr_model
 
     return vectorizer_model, umap_model, hdbscan_model, representation_model
-
 
 def cohere_integration():
     cohere_api_key = os.getenv("COHERE_API_KEY")
@@ -470,8 +475,7 @@ def cohere_integration():
         print(f"Error initializing Cohere integration: {e}")
         return None
 
-
-def bert_model(dataset_name, docs, embeddings, params=None):
+def bert_model(dataset_name, docs, embeddings, embedding_model, params=None):
     if not docs:
         print(f"No docs provided for {dataset_name}. Skipping topic modeling.")
         return None, None, None
@@ -479,8 +483,6 @@ def bert_model(dataset_name, docs, embeddings, params=None):
     params = params or {}
     vectorizer_model, umap_model, hdbscan_model, representation_model = create_submodels(params)
 
-    embedding_model_name = "sentence-transformers/all-MiniLM-L12-v2"
-    embedding_model = SentenceTransformer(embedding_model_name)
     print(f"Topic modeling for {dataset_name}...")
 
     topic_model = BERTopic(
@@ -504,7 +506,7 @@ def bert_model(dataset_name, docs, embeddings, params=None):
     finally:
         end_time = time.time()
         elapsed_hours = (end_time - start_time) / 3600
-        print(f"{dataset_name} topic modeling completed in {elapsed_hours:.2f} hours using {embedding_model_name}")
+        print(f"{dataset_name} topic modeling completed in {elapsed_hours:.2f} hours")
 
 def annotate_data(dfs, name, JUPYTER, topics_dict, probs_dict, topic_info_dict):
     dfs[name]["topic"] = topics_dict[name]
@@ -517,7 +519,6 @@ def annotate_data(dfs, name, JUPYTER, topics_dict, probs_dict, topic_info_dict):
 
         print(f"\nNumber of topics (including outlier): {len(topic_info_dict[name])}\n")
         display(topic_info_dict[name].sample(n=min(4, len(topic_info_dict[name]))))
-
 
 def process_topic_merges(dfs, topic_info_dict, name, topic_col="topic", repr_docs_col="Representative_Docs"):
     # Drop any existing merge columns to avoid duplicates
@@ -540,7 +541,6 @@ def process_topic_merges(dfs, topic_info_dict, name, topic_col="topic", repr_doc
         axis=1,
     )
     return df
-
 
 def process_core_topics(dfs, name, core_topics, topics_dict, probs_dict):
     dfs[name]["core_topic"] = topics_dict[name]
@@ -571,7 +571,6 @@ def process_core_topics(dfs, name, core_topics, topics_dict, probs_dict):
 
     return core_topics
 
-
 def update_model(name, dfs, docs, topic_models, docs_dict, dirs, core_topics_dict, topics_dict, probs_dict, nr_topics=30):
     model_dir, IDM_dir, hierarchy_dir, barchart_dir, dtm_dir = dirs  # Updated to include dtm_dir
     topic_model = topic_models[name]
@@ -589,18 +588,18 @@ def update_model(name, dfs, docs, topic_models, docs_dict, dirs, core_topics_dic
     figure_topics = topic_model_clustered.visualize_topics()
     figure_barchart = topic_model_clustered.visualize_barchart(top_n_topics=len(core_topics), n_words=10)
 
+    figure_barchart.update_layout(width=1800, height=1000, title=f"{name} Topic Barchart")
+
     figure_hierarchy.write_html(os.path.join(hierarchy_dir, f"{name}HRC.html"))
     figure_topics.write_html(os.path.join(IDM_dir, f"{name}IDM.html"))
     figure_barchart.write_html(os.path.join(barchart_dir, f"{name}BRC.html"))
 
     return topic_model_clustered
 
-
 def save_and_reload_model(name, model_dir, topic_models):
     save_path = Path(model_dir) / f"{name}.safetensors"
     topic_models[name].save(str(save_path), serialization="safetensors")
     print(f"Model saved: {save_path}")
-
 
 def save_dataframe_inplace(path, df):
     try:
@@ -608,7 +607,6 @@ def save_dataframe_inplace(path, df):
         print(f"Saved updated dataframe back to {path}")
     except Exception as e:
         print(f"Failed to save CSV: {e}")
-
 
 # =============================================================================
 # MAIN PIPELINE
@@ -622,7 +620,7 @@ def main():
     model_dir, IDM_dir, hierarchy_dir, barchart_dir, dtm_dir = create_directories()
     dirs = (model_dir, IDM_dir, hierarchy_dir, barchart_dir, dtm_dir)
 
-    embeddings_dict = compute_embeddings(docs_dict)
+    embeddings_dict, embedding_models = compute_embeddings(docs_dict)
 
     topic_models, topics_dict, probs_dict = {}, {}, {}
     topic_info_dict, core_topics_dict = {}, {}
@@ -634,8 +632,9 @@ def main():
             dataset_name=name,
             docs=docs,
             embeddings=embeddings_dict[name],
+            embedding_model=embedding_models[name],
             params=params
-        )
+            )
         topic_models[name] = topic_model
         topics_dict[name] = topics
         probs_dict[name] = probs
@@ -708,7 +707,6 @@ def main():
     print("\n" + "=" * 60)
     print("Pipeline finished successfully.")
     print("=" * 60)
-
 
 if __name__ == "__main__":
     try:
