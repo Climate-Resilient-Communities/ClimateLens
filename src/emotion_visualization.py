@@ -262,139 +262,6 @@ def load_datasets(file_paths: Dict[str, Path]) -> Dict[str, pd.DataFrame]:
     
     return datasets
 
-
-# =============================================================================
-# EMOTION DETECTION
-# =============================================================================
-
-def load_emotion_model():
-    """
-    Load the HuggingFace emotion detection model.
-    
-    Returns:
-        Tuple of (pipeline, device_name)
-    """
-    from transformers import pipeline, AutoModelForSequenceClassification, AutoTokenizer
-    import torch
-    
-    device = 0 if torch.cuda.is_available() else -1
-    device_name = 'GPU' if device == 0 else 'CPU'
-    
-    print(f"  Loading model: {EMOTION_MODEL_NAME}")
-    print(f"  Using device: {device_name}")
-    
-    model = AutoModelForSequenceClassification.from_pretrained(
-    EMOTION_MODEL_NAME,
-    use_safetensors=True  
-)
-    tokenizer = AutoTokenizer.from_pretrained(EMOTION_MODEL_NAME)
-    emotion_classifier = pipeline(
-        "text-classification",
-        model=model,
-        tokenizer=tokenizer,
-        device=device,
-        top_k=None  # Return all emotion scores
-    )
-    
-    return emotion_classifier, device_name
-
-
-def detect_emotions_batch(
-    texts: List[str],
-    emotion_classifier,
-    batch_size: int = 32
-) -> pd.DataFrame:
-    """
-    Detect emotions for a list of texts with batch processing.
-    
-    The model returns scores for all 7 emotions for each text.
-    We extract the top emotion and also store individual scores.
-    
-    Args:
-        texts: List of text strings to analyze
-        emotion_classifier: HuggingFace pipeline for emotion detection
-        batch_size: Number of texts to process at once
-        
-    Returns:
-        DataFrame with columns:
-        - emotion_label: Top predicted emotion
-        - emotion_confidence: Confidence score for top emotion
-        - anger, disgust, fear, joy, neutral, sadness, surprise: Individual scores
-        
-    Note:
-        The pipeline returns a list of lists when top_k=None, where each inner
-        list contains dicts with 'label' and 'score' for all emotions.
-    """
-    results = []
-    total = len(texts)
-    
-    for i in range(0, total, batch_size):
-        batch = texts[i:i + batch_size]
-        
-        # Truncate long texts (model limit: 512 tokens)
-        batch = [text[:512] if isinstance(text, str) else "" for text in batch]
-        
-        # Get predictions - returns list of lists when top_k=None
-        predictions = emotion_classifier(batch)
-        
-        # Extract results for each text
-        for pred in predictions:
-            # pred is a list of dicts with 'label' and 'score'
-            top_emotion = max(pred, key=lambda x: x['score'])
-            
-            # Create dict with all emotion scores
-            emotion_scores = {item['label']: item['score'] for item in pred}
-            
-            results.append({
-                'emotion_label': top_emotion['label'],
-                'emotion_confidence': top_emotion['score'],
-                **emotion_scores
-            })
-        
-        # Progress indicator (every 10 batches)
-        processed = min(i + batch_size, total)
-        if (i // batch_size) % 10 == 0:
-            print(f"    Processed {processed:,}/{total:,} texts...")
-    
-    return pd.DataFrame(results)
-
-
-def add_emotions_to_datasets(
-    datasets: Dict[str, pd.DataFrame],
-    emotion_classifier
-) -> Dict[str, pd.DataFrame]:
-    """
-    Run emotion detection on all datasets and add results as new columns.
-    Args:
-        datasets: Dictionary of DataFrames to process
-        emotion_classifier: HuggingFace pipeline
-    Returns:
-        Updated dictionary with emotion columns added to each DataFrame
-    """
-    updated_datasets = {}
-    for name, df in datasets.items():
-        print(f"\n  Processing {name} ({len(df):,} rows)...")
-        # Get cleaned texts
-        text_cols=('body', 'text')
-        text_col = next((c for c in text_cols if c in df.columns), None)
-        texts = df[text_col].fillna('').tolist()
-        # Detect emotions
-        emotion_results = detect_emotions_batch(texts, emotion_classifier)
-        # Drop any existing emotion columns to avoid duplicates
-        emotion_cols = ['emotion_label', 'emotion_confidence'] + EMOTIONS
-        df_clean = df.drop(columns=[c for c in emotion_cols if c in df.columns], errors='ignore')
-        # Concatenate results to original dataframe
-        df_with_emotions = pd.concat([df_clean, emotion_results], axis=1)
-        # Print distribution
-        dist = df_with_emotions['emotion_label'].value_counts()
-        print(f"    Emotion distribution:")
-        for emotion, count in dist.items():
-            pct = count / len(df_with_emotions) * 100
-            print(f"      {emotion}: {count:,} ({pct:.1f}%)")
-        updated_datasets[name] = df_with_emotions
-    return updated_datasets
-
-
 # =============================================================================
 # WORD CLOUD GENERATION
 # =============================================================================
@@ -822,59 +689,48 @@ def create_summary_report(
     
     return str(filepath)
 
-
 # =============================================================================
 # MAIN PIPELINE
 # =============================================================================
 
 def run_pipeline() -> None:
-    """
-    Execute the complete emotion visualization pipeline.
-    
-    Steps:
-    1. Load environment and create directories
-    2. Find and load CSV datasets
-    3. Load emotion detection model
-    4. Detect emotions for all texts
-    5. Generate word clouds
-    6. Generate time-series visualizations
-    7. Create summary report
-    """
     print("=" * 60)
     print(" EMOTION VISUALIZATION PIPELINE")
     print("=" * 60)
     
     # Step 1: Environment setup
-    print("\n[1/7] Setting up environment...")
+    print("\n[1/5] Setting up environment...")
     env = load_environment()
     directories = create_directories(env['output_dir'])
     print(f"  Data directory: {env['data_dir']}")
     print(f"  Output directory: {env['output_dir']}")
     
     # Step 2: Find and load data
-    print("\n[2/7] Loading datasets...")
+    print("\n[2/5] Loading datasets...")
     try:
         file_paths = find_csv_files(env['data_dir'])
         datasets = load_datasets(file_paths)
     except (FileNotFoundError, KeyError) as e:
         print(f"\nERROR: Error loading data: {e}")
-        #return
         raise SystemExit(1)
-
     
-    # Step 3: Load emotion model
-    print("\n[3/7] Loading emotion detection model...")
-    emotion_classifier, device_name = load_emotion_model()
-    print(f"  Model loaded successfully on {device_name}")
+    # Step 3: Check for emotion labels
+    print("\n[3/5] Validating emotion data...")
+    for name, df in datasets.items():
+        if 'emotion_label' not in df.columns:
+            print(f"\nERROR: '{name}' dataset missing 'emotion_label' column")
+            print(f"Available columns: {list(df.columns)}")
+            print("\nPlease ensure your CSV files already contain emotion labels")
+            print("or add emotion detection to the pipeline first.")
+            raise SystemExit(1)
+        
+        # Count emotions
+        emotion_counts = df['emotion_label'].value_counts()
+        print(f"  {name}: {len(df):,} posts with {len(emotion_counts)} emotions")
+        print(f"    Top emotion: {emotion_counts.index[0]} ({emotion_counts.iloc[0]:,} posts)")
     
-    # Step 4: Detect emotions
-    print("\n[4/7] Detecting emotions...")
-    print("  This may take several minutes depending on dataset size...")
-    datasets = add_emotions_to_datasets(datasets, emotion_classifier)
-    print("  Emotion detection complete")
-    
-    # Step 5: Generate word clouds
-    print("\n[5/7] Generating word clouds...")
+    # Step 4: Generate word clouds
+    print("\n[4/5] Generating word clouds...")
     wordcloud_dir = directories['wordclouds']
     all_wordcloud_files = []
     
@@ -883,10 +739,10 @@ def run_pipeline() -> None:
         files = generate_wordclouds_for_dataset(df, name, wordcloud_dir)
         all_wordcloud_files.extend(files)
     
-    print(f"  Generated {len(all_wordcloud_files)} word cloud files")
+    print(f"\n  Generated {len(all_wordcloud_files)} word cloud files")
     
-    # Step 6: Generate time-series
-    print("\n[6/7] Generating time-series visualizations...")
+    # Step 5: Generate time-series
+    print("\n[5/5] Generating time-series visualizations...")
     timeseries_dir = directories['timeseries']
     all_timeseries_files = []
     
@@ -895,10 +751,10 @@ def run_pipeline() -> None:
         files = create_emotion_timeseries(df, name, timeseries_dir)
         all_timeseries_files.extend(files)
     
-    print(f"  Generated {len(all_timeseries_files)} time-series files")
+    print(f"\n  Generated {len(all_timeseries_files)} time-series files")
     
-    # Step 7: Create summary report
-    print("\n[7/7] Creating summary report...")
+    # Create summary report
+    print("\nCreating summary report...")
     summary_path = create_summary_report(datasets, directories['emotions'])
     print(f"  Summary report saved: {summary_path}")
     
@@ -912,11 +768,6 @@ def run_pipeline() -> None:
     print(f"  Time-Series: {len(all_timeseries_files)} HTML files")
     print(f"  Summary Report: 1 HTML file")
     print(f"\nTotal files generated: {len(all_wordcloud_files) + len(all_timeseries_files) + 1}")
-
-
-# =============================================================================
-# ENTRY POINT
-# =============================================================================
 
 if __name__ == "__main__":
     run_pipeline()
