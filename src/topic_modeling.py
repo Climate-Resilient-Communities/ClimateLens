@@ -34,15 +34,26 @@ DATASET_PARAMS = {
         "max_df": 0.90,
         "n_neighbors": 5,
         "min_cluster_size": 5,
+        "min_samples": 5,
         "min_topic_size": 5,
         "nr_topics": 20
     },
-    "default": {
+    "reddit": {
         "min_df": 0.05,
         "max_df": 0.90,
         "n_neighbors": 15,
         "min_cluster_size": 70,
+        "min_samples": 10,
         "min_topic_size": 100,
+        "nr_topics": "auto"
+    },
+    "reddit_small": {
+        "min_df": 0.01,
+        "max_df": 0.95,
+        "n_neighbors": 3,
+        "min_cluster_size": 5,
+        "min_samples": 5,
+        "min_topic_size": 15,
         "nr_topics": "auto"
     }
 }
@@ -303,8 +314,9 @@ if IN_AZUREML:
 # ======================================
 # ENSURE DIRECTORIES EXIST
 # ======================================
-Path(DATA_DIR).mkdir(parents=True, exist_ok=True)
-Path(OUTPUT_DIR).mkdir(parents=True, exist_ok=True)
+Path(DATA_DIR).mkdir(parents=True, exist_ok=True) # can exist_ok work with mkdir()? according to docs, it should only be makedirs()
+Path(OUTPUT_DIR).mkdir(parents=True, exist_ok=True) #investigate this
+# https://docs.python.org/3/library/os.html#os.mkdir
 
 def process_datasets(data_path, text_cols=('body', 'text')):
     datasets, dfs, docs_dict, failed = {}, {}, {}, []
@@ -352,6 +364,7 @@ def create_directories():
 
     if IN_AZUREML:
         base = Path("outputs")
+        print(f"In AzureML, base: {base}")
     else:
         base = Path("./code")
 
@@ -364,7 +377,7 @@ def create_directories():
     }
 
     for path in directories.values():
-        path.mkdir(parents=True, exist_ok=True)
+        path.mkdir(parents=True, exist_ok=True) #again, check docs
 
     return (
         directories["models"],
@@ -408,14 +421,14 @@ def create_submodels(params=None):
     twitter_stopwords = [
         'https', 'http', 'co', 'rt', 'amp', 't', 'www', 'url', 'pic',
         'twitter', 'com', 'ru', 'tldrs'
-        ]
+        ] # do we really need this? we can take these out much earlier
 
     vectorizer_model = CountVectorizer(
         ngram_range=(1, 2),
         min_df=params["min_df"],
         max_df=params["max_df"],
         stop_words=twitter_stopwords  # Fallback to catch any Twitter artifacts
-    )
+    ) # look into removing the stopwords
 
     umap_model = UMAP(
         n_neighbors=params["n_neighbors"],
@@ -427,14 +440,14 @@ def create_submodels(params=None):
 
     hdbscan_model = HDBSCAN(
         min_cluster_size=params["min_cluster_size"],
-        min_samples=10,
+        min_samples=params["min_samples"],
         metric='euclidean',
-        prediction_data=True
+        prediction_data=True #when was this added? need to check this param
     )
 
     mmr_model = MaximalMarginalRelevance(diversity=0.3)
 
-    cohere_model = cohere_integration()
+    cohere_model = cohere_integration() #look into having this be a separate function or utils file, would be better
     if cohere_model:
         representation_model = [mmr_model, cohere_model]
         print(f"Using MMR + Cohere for representation")
@@ -499,14 +512,18 @@ def bert_model(dataset_name, docs, embeddings, embedding_model, params=None):
     try:
         topics, probs = topic_model.fit_transform(docs, embeddings)
         return topic_model, topics, probs
+    except ValueError as e:
+        if "After pruning, no terms remain" in str(e):
+            raise
+        return None, None, None
     except Exception as e:
         print(f"Error during {dataset_name} topic modeling: {e}")
         traceback.print_exc()
         return None, None, None
     finally:
         end_time = time.time()
-        elapsed_hours = (end_time - start_time) / 3600
-        print(f"{dataset_name} topic modeling completed in {elapsed_hours:.2f} hours")
+        elapsed_seconds = end_time - start_time
+        print(f"{dataset_name} topic modeling completed in {elapsed_seconds} seconds")
 
 def annotate_data(dfs, name, JUPYTER, topics_dict, probs_dict, topic_info_dict):
     dfs[name]["topic"] = topics_dict[name]
@@ -571,6 +588,7 @@ def process_core_topics(dfs, name, core_topics, topics_dict, probs_dict):
 
     return core_topics
 
+"""
 def update_model(name, dfs, docs, topic_models, docs_dict, dirs, core_topics_dict, topics_dict, probs_dict, nr_topics=30):
     model_dir, IDM_dir, hierarchy_dir, barchart_dir, dtm_dir = dirs  # Updated to include dtm_dir
     topic_model = topic_models[name]
@@ -593,6 +611,101 @@ def update_model(name, dfs, docs, topic_models, docs_dict, dirs, core_topics_dic
     figure_hierarchy.write_html(os.path.join(hierarchy_dir, f"{name}HRC.html"))
     figure_topics.write_html(os.path.join(IDM_dir, f"{name}IDM.html"))
     figure_barchart.write_html(os.path.join(barchart_dir, f"{name}BRC.html"))
+
+    return topic_model_clustered
+"""
+
+def update_model(name, dfs, docs, topic_models, docs_dict, dirs, core_topics_dict, topics_dict, probs_dict, nr_topics=30):
+    model_dir, IDM_dir, hierarchy_dir, barchart_dir, dtm_dir = dirs
+    topic_model = topic_models[name]
+
+    # reduce and update
+    topic_model_clustered = topic_model.reduce_topics(docs_dict[name], nr_topics=nr_topics)
+    print(f"New topics:\n{topic_model_clustered.topics_}")
+
+    # update topics' representations (this can be expensive)
+    try:
+        topic_model_clustered.update_topics(docs_dict[name], n_gram_range=(3, 5))
+    except Exception as e:
+        print(f"Warning: update_topics failed for {name}: {e}")
+        traceback.print_exc()
+
+    # collect core topics and attach to dfs
+    try:
+        core_topics = topic_model_clustered.get_topic_info()
+        core_topics = process_core_topics(dfs, name, core_topics, topics_dict, probs_dict)
+        core_topics_dict[name] = core_topics
+    except Exception as e:
+        print(f"Warning: get_topic_info / process_core_topics failed for {name}: {e}")
+        core_topics_dict[name] = pd.DataFrame()
+
+    # Visualization: wrap each call in try/except and skip if not enough topics
+    figure_hierarchy = None
+    figure_topics = None
+    figure_barchart = None
+
+    # Attempt hierarchy
+    try:
+        figure_hierarchy = topic_model_clustered.visualize_hierarchy()
+    except Exception as e:
+        print(f"Failed to generate hierarchy for {name}: {e}")
+        traceback.print_exc()
+
+    # Attempt topic scatter / IDM only if there are enough topics to avoid ValueError
+    try:
+        topic_info = topic_model_clustered.get_topic_info()
+        # Exclude outlier topic (-1) if present
+        if 'Topic' in topic_info.columns:
+            n_topics = len(topic_info[topic_info['Topic'] != -1])
+        else:
+            n_topics = len(topic_info)
+
+        if n_topics > 1:
+            try:
+                figure_topics = topic_model_clustered.visualize_topics()
+            except Exception as e:
+                print(f"Failed to generate topic scatter for {name}: {e}")
+                traceback.print_exc()
+        else:
+            print(f" Not enough topics ({n_topics}) to visualize topics for {name}. Skipping visualize_topics().")
+    except Exception as e:
+        print(f"Failed to determine topic count for {name}: {e}")
+        traceback.print_exc()
+
+    # Attempt barchart test (that might be what's causing the issues)
+    try:
+        # Use length of core_topics for top_n_topics if available, otherwise fallback
+        top_n = len(core_topics_dict.get(name, [])) if isinstance(core_topics_dict.get(name), (list, pd.DataFrame)) else None
+        if isinstance(core_topics_dict.get(name), pd.DataFrame):
+            top_n = len(core_topics_dict[name])
+        top_n = top_n or 10
+        figure_barchart = topic_model_clustered.visualize_barchart(top_n_topics=top_n, n_words=10)
+        figure_barchart.update_layout(width=1800, height=1000, title=f"{name} Topic Barchart")
+    except Exception as e:
+        print(f"Failed to generate barchart for {name}: {e}")
+        traceback.print_exc()
+
+    # Save whatever visualizations succeeded
+    try:
+        if figure_hierarchy is not None:
+            figure_hierarchy.write_html(os.path.join(hierarchy_dir, f"{name}HRC.html"))
+    except Exception as e:
+        print(f"Failed to save hierarchy HTML for {name}: {e}")
+        traceback.print_exc()
+
+    try:
+        if figure_topics is not None:
+            figure_topics.write_html(os.path.join(IDM_dir, f"{name}IDM.html"))
+    except Exception as e:
+        print(f"Failed to save topics HTML for {name}: {e}")
+        traceback.print_exc()
+
+    try:
+        if figure_barchart is not None:
+            figure_barchart.write_html(os.path.join(barchart_dir, f"{name}BRC.html"))
+    except Exception as e:
+        print(f"Failed to save barchart HTML for {name}: {e}")
+        traceback.print_exc()
 
     return topic_model_clustered
 
@@ -620,27 +733,56 @@ def main():
     model_dir, IDM_dir, hierarchy_dir, barchart_dir, dtm_dir = create_directories()
     dirs = (model_dir, IDM_dir, hierarchy_dir, barchart_dir, dtm_dir)
 
+    print(f"[DEBUG] CWD: {os.getcwd()}")
+    print(f"[DEBUG] Azure output base: {model_dir.parent}")
+    print(f"[DEBUG] Model dir exists: {model_dir.exists()}")
+
     embeddings_dict, embedding_models = compute_embeddings(docs_dict)
 
     topic_models, topics_dict, probs_dict = {}, {}, {}
     topic_info_dict, core_topics_dict = {}, {}
 
     # Train models
+    """
     for name, docs in docs_dict.items():
-        params = DATASET_PARAMS.get(name, DATASET_PARAMS["default"])
-        topic_model, topics, probs = bert_model(
-            dataset_name=name,
-            docs=docs,
-            embeddings=embeddings_dict[name],
-            embedding_model=embedding_models[name],
-            params=params
+        try:
+            params = DATASET_PARAMS.get(name, DATASET_PARAMS["reddit"])
+            topic_model, topics, probs = bert_model(
+                dataset_name=name,
+                docs=docs,
+                embeddings=embeddings_dict[name],
+                embedding_model=embedding_models[name],
+                params=params,
             )
+
+        except ValueError as e:
+            if "After pruning, no terms remain" not in str(e):
+                raise  # re-raise unexpected ValueErrors
+
+            # popular BERTopic / c-TF-IDF failure. using fallback params
+            print(f"Using smaller reddit parameters for {name}\n")
+            params = DATASET_PARAMS.get(name, DATASET_PARAMS["reddit_small"])
+            topic_model, topics, probs = bert_model(
+                dataset_name=name,
+                docs=docs,
+                embeddings=embeddings_dict[name],
+                embedding_model=embedding_models[name],
+                params=params,
+            )
+
         topic_models[name] = topic_model
         topics_dict[name] = topics
         probs_dict[name] = probs
 
+        if topic_models[name] is None:
+            print(f"Skipping {name}: no valid topic model")
+            continue
+
     # Post-process & annotate
     for name in dfs.keys():
+        if topic_models.get(name) is None:
+            print(f"Skipping post-processing for {name} since there's no topic model")
+            continue
         topic_info_dict[name] = topic_models[name].get_topic_info()
         annotate_data(
             dfs, name, JUPYTER,
@@ -650,21 +792,103 @@ def main():
 
     # Update models and generate static visualizations
     for name in dfs.keys():
-        params = DATASET_PARAMS.get(name, DATASET_PARAMS["default"])
-        topic_models[name] = update_model(
-            name=name,
-            dfs=dfs,
-            docs=docs_dict[name],
-            topic_models=topic_models,
-            docs_dict=docs_dict,
-            dirs=dirs,
-            core_topics_dict=core_topics_dict,
-            topics_dict=topics_dict,
-            probs_dict=probs_dict,
-            nr_topics=params["nr_topics"]
-        )
-        save_dataframe_inplace(datasets[name], dfs[name])
-        save_and_reload_model(name, model_dir, topic_models)
+        try:
+            params = DATASET_PARAMS.get(name, DATASET_PARAMS["reddit"])
+            topic_models[name] = update_model(
+                name=name,
+                dfs=dfs,
+                docs=docs_dict[name],
+                topic_models=topic_models,
+                docs_dict=docs_dict,
+                dirs=dirs,
+                core_topics_dict=core_topics_dict,
+                topics_dict=topics_dict,
+                probs_dict=probs_dict,
+                nr_topics=params["nr_topics"],
+            )
+            save_dataframe_inplace(datasets[name], dfs[name])
+            save_and_reload_model(name, model_dir, topic_models)
+
+        except ValueError as e:
+            if "After pruning, no terms remain" not in str(e):
+                raise  # not the BERTopic pruning error → bubble up
+
+            print(f"Using smaller reddit parameters for {name}\n")
+            params = DATASET_PARAMS.get(name, DATASET_PARAMS["reddit_small"])
+            topic_models[name] = update_model(
+                name=name,
+                dfs=dfs,
+                docs=docs_dict[name],
+                topic_models=topic_models,
+                docs_dict=docs_dict,
+                dirs=dirs,
+                core_topics_dict=core_topics_dict,
+                topics_dict=topics_dict,
+                probs_dict=probs_dict,
+                nr_topics=params["nr_topics"],
+            )
+            save_dataframe_inplace(datasets[name], dfs[name])
+            save_and_reload_model(name, model_dir, topic_models)
+            """
+
+            # Update models and generate static visualizations
+
+            # this is just a test
+    for name in dfs.keys():
+        if topic_models.get(name) is None:
+            print(f"Skipping update for {name}: no model available")
+            continue
+
+        try:
+            params = DATASET_PARAMS.get(name, DATASET_PARAMS["reddit"])
+            topic_models[name] = update_model(
+                name=name,
+                dfs=dfs,
+                docs=docs_dict[name],
+                topic_models=topic_models,
+                docs_dict=docs_dict,
+                dirs=dirs,
+                core_topics_dict=core_topics_dict,
+                topics_dict=topics_dict,
+                probs_dict=probs_dict,
+                nr_topics=params["nr_topics"],
+            )
+            save_dataframe_inplace(datasets[name], dfs[name])
+            save_and_reload_model(name, model_dir, topic_models)
+        except ValueError as e:
+            if "After pruning, no terms remain" not in str(e):
+                # if it's unexpected, log and continue (don't kill entire pipeline)
+                print(f"Unexpected ValueError when updating {name}: {e}")
+                traceback.print_exc()
+                continue
+
+            print(f"Using smaller reddit parameters for {name}\n")
+            try:
+                params = DATASET_PARAMS.get(name, DATASET_PARAMS["reddit_small"])
+                topic_models[name] = update_model(
+                    name=name,
+                    dfs=dfs,
+                    docs=docs_dict[name],
+                    topic_models=topic_models,
+                    docs_dict=docs_dict,
+                    dirs=dirs,
+                    core_topics_dict=core_topics_dict,
+                    topics_dict=topics_dict,
+                    probs_dict=probs_dict,
+                    nr_topics=params["nr_topics"],
+                )
+                save_dataframe_inplace(datasets[name], dfs[name])
+                save_and_reload_model(name, model_dir, topic_models)
+            except Exception:
+                print(f"Failed updating {name} even with smaller params; skipping.")
+                traceback.print_exc()
+                continue
+        except Exception as e:
+            print(f"Unexpected error when updating model {name}: {e}")
+            traceback.print_exc()
+            # continue to next dataset instead of aborting the whole pipeline
+            continue
+
 
     # ==========================================================================
     # DYNAMIC TOPIC MODELING (NEW SECTION)
@@ -714,3 +938,4 @@ if __name__ == "__main__":
     except Exception:
         print("Exception in pipeline:")
         traceback.print_exc()
+        pass
