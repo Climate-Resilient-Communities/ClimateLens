@@ -1,12 +1,4 @@
-"""
-Data Preprocessing Pipeline for Climate NLP Project
-
-This module provides text cleaning and preprocessing for Twitter and Reddit datasets.
-Run directly to process all datasets in the configured data directory.
-
-Usage:
-    python src/data_preprocessing.py
-"""
+#text cleaning and preprocessing for Twitter and Reddit datasets.
 
 import os
 import re
@@ -49,7 +41,6 @@ PRESERVE_WORDS = {
     "don't", 'do', 'does', 'did', 'why', 'what', 'how', 'if', 'that', 'this',
     'i', 'you', 'we', 'they', 'he', 'she', 'it'
 }
-
 
 # =============================================================================
 # FUNCTIONS
@@ -259,7 +250,7 @@ def run_pipeline(data_path):
 
         # Save cleaned dataset
         df.to_csv(datasets[name], index=False)
-        print(f"  {name} cleaning complete! ({len(df)} documents retained)\n")
+        print(f"{name} cleaning complete! ({len(df)} documents retained)\n")
 
 
 # =============================================================================
