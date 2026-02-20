@@ -289,35 +289,6 @@ def load_environment():
 
     return data_dir, code_dir, JUPYTER
 
-# ===============================
-# DEFAULT DIRECTORIES (local dev)
-# ===============================
-DATA_DIR = "./data"
-OUTPUT_DIR = "./code/visualizations"
-
-# ======================================
-# DETECT IF RUNNING INSIDE AZURE ML JOB
-# ======================================
-IN_AZUREML = (
-    "AZUREML_RUN_ID" in os.environ
-    or "AZUREML_EXPERIMENT_ID" in os.environ
-    or "AZUREML_OUTPUT_DIR" in os.environ
-)
-
-# ======================================
-# OVERRIDE PATHS WHEN INSIDE AZURE ML
-# ======================================
-if IN_AZUREML:
-    DATA_DIR = "outputs/data"
-    OUTPUT_DIR = "outputs/visualizations"
-
-# ======================================
-# ENSURE DIRECTORIES EXIST
-# ======================================
-Path(DATA_DIR).mkdir(parents=True, exist_ok=True) # can exist_ok work with mkdir()? according to docs, it should only be makedirs()
-Path(OUTPUT_DIR).mkdir(parents=True, exist_ok=True) #investigate this
-# https://docs.python.org/3/library/os.html#os.mkdir
-
 def process_datasets(data_path, text_cols=('body', 'text')):
     datasets, dfs, docs_dict, failed = {}, {}, {}, []
     data_path = Path(data_path)
@@ -349,7 +320,7 @@ def process_datasets(data_path, text_cols=('body', 'text')):
 
     return dfs, docs_dict, datasets
 
-def create_directories():
+def create_directories(code_dir):
     """
     Create output directories for BOTH local and AzureML runs.
 
@@ -362,11 +333,7 @@ def create_directories():
         outputs/visualizations/...
     """
 
-    if IN_AZUREML:
-        base = Path("outputs")
-        print(f"In AzureML, base: {base}")
-    else:
-        base = Path("./code")
+    base = code_dir
 
     directories = {
         "models": base / "models",
@@ -442,7 +409,7 @@ def create_submodels(params=None):
         min_cluster_size=params["min_cluster_size"],
         min_samples=params["min_samples"],
         metric='euclidean',
-        prediction_data=True #when was this added? need to check this param
+        prediction_data=True #need to check this param
     )
 
     mmr_model = MaximalMarginalRelevance(diversity=0.3)
@@ -730,7 +697,7 @@ def main():
     dfs, docs_dict, datasets = process_datasets(data_dir)
 
     # Updated to include dtm_dir
-    model_dir, IDM_dir, hierarchy_dir, barchart_dir, dtm_dir = create_directories()
+    model_dir, IDM_dir, hierarchy_dir, barchart_dir, dtm_dir = create_directories(code_dir)
     dirs = (model_dir, IDM_dir, hierarchy_dir, barchart_dir, dtm_dir)
 
     print(f"[DEBUG] CWD: {os.getcwd()}")
