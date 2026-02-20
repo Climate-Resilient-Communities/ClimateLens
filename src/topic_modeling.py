@@ -9,9 +9,7 @@ from datetime import datetime
 import pandas as pd
 from dotenv import load_dotenv
 
-# !pip install -q bertopic sentence-transformers umap-learn hdbscan #cohere
-#import cohere
-#from bertopic.representation import Cohere
+# !pip install -q bertopic sentence-transformers umap-learn hdbscan
 from bertopic import BERTopic
 from bertopic.representation import MaximalMarginalRelevance
 from sklearn.feature_extraction.text import CountVectorizer
@@ -413,47 +411,11 @@ def create_submodels(params=None):
     )
 
     mmr_model = MaximalMarginalRelevance(diversity=0.3)
-
-    cohere_model = cohere_integration() #look into having this be a separate function or utils file, would be better
-    if cohere_model:
-        representation_model = [mmr_model, cohere_model]
-        print(f"Using MMR + Cohere for representation")
-    else:
-        representation_model = mmr_model
+    representation_model = mmr_model
 
     return vectorizer_model, umap_model, hdbscan_model, representation_model
 
-def cohere_integration():
-    cohere_api_key = os.getenv("COHERE_API_KEY")
-    if not cohere_api_key:
-        print("No COHERE_API_KEY found in .env file, skipping Cohere representation.")
-        return None
 
-    try:
-        cohere_client = cohere.Client(cohere_api_key)
-        custom_prompt = """
-        I have a topic described by the following keywords:
-        [KEYWORDS]
-
-        The most representative documents for this topic are:
-        [DOCUMENTS]
-
-        Based on the information above, create a short topic label.
-        Use 2-5 words maximum, no punctuation.
-
-        Return only the label (2-5 words, no prefix)
-        """
-        return Cohere(
-            cohere_client,
-            model="command-r-08-2024",
-            prompt=custom_prompt,
-            nr_docs=4,
-            diversity=0.1,
-            delay_in_seconds=2
-        )
-    except Exception as e:
-        print(f"Error initializing Cohere integration: {e}")
-        return None
 
 def bert_model(dataset_name, docs, embeddings, embedding_model, params=None):
     if not docs:
