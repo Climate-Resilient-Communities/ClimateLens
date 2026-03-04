@@ -10,7 +10,7 @@ import pandas as pd
 from dotenv import load_dotenv
 
 print("Installing dependencies...")
-!pip install -q bertopic sentence-transformers umap-learn hdbscan
+!pip install -qq bertopic sentence-transformers umap-learn hdbscan
 print("Dependencies installed.")
 
 from bertopic import BERTopic
@@ -20,11 +20,9 @@ from sentence_transformers import SentenceTransformer
 from umap import UMAP
 from hdbscan import HDBSCAN
 
-#warnings.filterwarnings("ignore")
+warnings.filterwarnings("ignore")
 
-# Dataset size-specific hyperparameters for BERTopic modeling.
-# Twitter data uses more aggressive clustering (smaller min sizes) due to shorter texts.
-# The "default" configuration applies to all other datasets (e.g., Reddit, news articles).
+# Dataset size-specific hyperparameters for BERT modeling.
 DATASET_PARAMS = {
     "twitter": {
         "min_df": 0.05,
@@ -33,8 +31,8 @@ DATASET_PARAMS = {
         "min_cluster_size": 5,
         "min_samples": 5,
         "min_topic_size": 5,
-        "nr_topics": 20
-    },
+        "nr_topics": "auto"
+    }, # more aggressive clustering for shorter texts.
     "reddit": {
         "min_df": 0.05,
         "max_df": 0.90,
@@ -62,9 +60,8 @@ def load_environment():
         from google.colab import drive
         drive.mount("/content/drive")
 
-        #Since its running locally (not in Colab),this code never executes
-        base_path = "..."
-        env_path = Path(base_path) / ".env"
+        base_path = "/content/drive/MyDrive/ClimateLens/02 Code/02.01 MVP2/"
+        env_path = Path(base_path) / "colab.env"
         JUPYTER = True
     except ImportError:
         env_path = Path(__file__).resolve().parent.parent / ".env"
@@ -111,7 +108,7 @@ def process_datasets(data_path, text_cols=('body', 'text')):
     return dfs, docs_dict, datasets
 
 def create_directories(code_dir):
-    base = code_dir
+    base = Path(code_dir) / "outputs"
 
     directories = {
         "models": base / "models",
@@ -230,7 +227,7 @@ def bert_model(dataset_name, docs, embeddings, embedding_model, params=None):
     finally:
         end_time = time.time()
         elapsed_seconds = end_time - start_time
-        print(f"{dataset_name} topic modeling completed in {elapsed_seconds} seconds")
+        print(f"{dataset_name} topic modeling completed in {elapsed_seconds:.3f} seconds")
 
 def annotate_data(dfs, name, JUPYTER, topics_dict, probs_dict, topic_info_dict):
     dfs[name]["topic"] = topics_dict[name]
@@ -296,12 +293,10 @@ def process_core_topics(dfs, name, core_topics, topics_dict, probs_dict):
     return core_topics
 
 def update_model(name, dfs, docs, topic_models, docs_dict, dirs, core_topics_dict, topics_dict, probs_dict, nr_topics=30):
-    model_dir, IDM_dir, hierarchy_dir, barchart_dir, dtm_dir = dirs  # Updated to include dtm_dir
+    model_dir, IDM_dir, hierarchy_dir, barchart_dir, dtm_dir = dirs  # Updated to include dtm_dir ????????????
     topic_model = topic_models[name]
 
     topic_model_clustered = topic_model.reduce_topics(docs_dict[name], nr_topics=nr_topics)
-    print(f"New topics:\n{topic_model_clustered.topics_}")
-
     topic_model_clustered.update_topics(docs_dict[name], n_gram_range=(3, 5))
 
     core_topics = topic_model_clustered.get_topic_info()
@@ -332,17 +327,14 @@ def save_dataframe_inplace(path, df):
     except Exception as e:
         print(f"Failed to save CSV: {e}")
 
-# =============================================================================
-# MAIN PIPELINE
-# =============================================================================
+data_dir, code_dir, JUPYTER = load_environment()
 
 def main():
-    data_dir, code_dir, JUPYTER = load_environment()
     dfs, docs_dict, datasets = process_datasets(data_dir)
 
     # Updated to include dtm_dir
     model_dir, IDM_dir, hierarchy_dir, barchart_dir, dtm_dir = create_directories(code_dir)
-    dirs = (model_dir, IDM_dir, hierarchy_dir, barchart_dir, dtm_dir)
+    dirs = (model_dir, IDM_dir, hierarchy_dir, barchart_dir, dtm_dir) # look into changing this?
 
     embeddings_dict, embedding_models = compute_embeddings(docs_dict)
 
@@ -352,6 +344,7 @@ def main():
     # Train models
     for name, docs in docs_dict.items():
         try:
+            print(f"'\n' + '=' * 60 + {name.upper()}:\n")
             params = DATASET_PARAMS.get(name, DATASET_PARAMS["reddit"])
             topic_model, topics, probs = bert_model(
                 dataset_name=name,
