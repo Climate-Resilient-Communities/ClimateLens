@@ -9,16 +9,16 @@ from datetime import datetime
 import pandas as pd
 from dotenv import load_dotenv
 
-print("Installing dependencies...")
 !pip install -qq bertopic sentence-transformers umap-learn hdbscan
-print("Dependencies installed.")
 
+print("Importing dependencies...")
 from bertopic import BERTopic
 from bertopic.representation import MaximalMarginalRelevance
 from sklearn.feature_extraction.text import CountVectorizer
 from sentence_transformers import SentenceTransformer
 from umap import UMAP
 from hdbscan import HDBSCAN
+print("Dependencies imported!")
 
 warnings.filterwarnings("ignore")
 
@@ -46,8 +46,8 @@ DATASET_PARAMS = {
         "min_df": 0.01,
         "max_df": 0.95,
         "n_neighbors": 3,
-        "min_cluster_size": 5,
-        "min_samples": 5,
+        "min_cluster_size": 3,
+        "min_samples": 3,
         "min_topic_size": 15,
         "nr_topics": "auto"
     }
@@ -209,7 +209,7 @@ def bert_model(dataset_name, docs, embeddings, embedding_model, params=None):
         vectorizer_model=vectorizer_model,
         representation_model=representation_model,
         min_topic_size=params.get("min_topic_size", 7),
-        nr_topics="auto",
+        nr_topics=params["nr_topics"],
     )
 
     start_time = time.time()
@@ -329,6 +329,12 @@ def save_dataframe_inplace(path, df):
 
 data_dir, code_dir, JUPYTER = load_environment()
 
+import sys
+sys.path.append(code_dir)
+
+print("Importing DTM file...")
+from dynamic_topic_modeling import run_dynamic_topic_modeling
+
 def main():
     dfs, docs_dict, datasets = process_datasets(data_dir)
 
@@ -344,7 +350,7 @@ def main():
     # Train models
     for name, docs in docs_dict.items():
         try:
-            print(f"'\n' + '=' * 60 + {name.upper()}:\n")
+            print("\n" + "=" * 60 + f"\n{name.upper()}:\n")
             params = DATASET_PARAMS.get(name, DATASET_PARAMS["reddit"])
             topic_model, topics, probs = bert_model(
                 dataset_name=name,
@@ -442,6 +448,18 @@ def main():
             traceback.print_exc()
             # continue to next dataset instead of aborting the whole pipeline
             continue
+
+    # Running dtm
+    try:
+        run_dynamic_topic_modeling(
+            dfs=dfs,
+            topic_models=topic_models,
+            docs_dict=docs_dict,
+            dtm_dir=dtm_dir
+        )
+    except Exception as e:
+        print(f"DTM stage failed: {e}")
+        traceback.print_exc()
 
     print("\n" + "=" * 60)
     print("Pipeline finished successfully.")
