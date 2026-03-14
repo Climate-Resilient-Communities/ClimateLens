@@ -1,26 +1,5 @@
 # Original Author: Ardavan Shahrabi
 
-import os
-import re
-import time
-import warnings
-import traceback
-from pathlib import Path
-from datetime import datetime
-
-import pandas as pd
-from dotenv import load_dotenv
-
-!pip install -q bertopic sentence-transformers umap-learn hdbscan
-from bertopic import BERTopic
-from bertopic.representation import MaximalMarginalRelevance
-from sklearn.feature_extraction.text import CountVectorizer
-from sentence_transformers import SentenceTransformer
-from umap import UMAP
-from hdbscan import HDBSCAN
-
-#warnings.filterwarnings("ignore")
-
 def prepare_timestamps(dfs, name):
     """
     Extract and validate timestamps from a dataset.
@@ -217,12 +196,9 @@ def save_dtm_outputs(topics_over_time, fig, name, dtm_dir):
         print(f"Error saving DTM outputs for {name}: {e}")
         traceback.print_exc()
 
-def main():
-    # ==========================================================================
-    # DYNAMIC TOPIC MODELING (NEW SECTION)
-    # ==========================================================================
+def run_dynamic_topic_modeling(dfs, topic_models, docs_dict, dtm_dir):
     print("\n" + "=" * 60)
-    print("DYNAMIC TOPIC MODELING")
+    print("Starting Dynamic Topic Modeling:\n")
     print("=" * 60)
 
     for name in dfs.keys():
@@ -233,17 +209,22 @@ def main():
         timestamps = prepare_timestamps(dfs, name)
 
         if timestamps is None:
-            print(f"   Skipping DTM for {name} (no valid timestamps)")
+            print(f"Skipping DTM for {name} (no valid timestamps)")
             continue
 
-        # Step 2: Perform DTM using the already-trained model
         try:
+            # Step 2: Use existing trained model
+            model = topic_models.get(name)
+            if model is None:
+                print(f"Skipping DTM for {name} (no trained model)")
+                continue
+
             topics_over_time, fig = perform_dynamic_topic_modeling(
-                topic_model=topic_models[name],
+                topic_model=model,
                 docs=docs_dict[name],
                 timestamps=timestamps,
                 name=name,
-                nr_bins=None,  # Auto-calculate
+                nr_bins=None,
                 top_n_topics=10
             )
 
@@ -252,18 +233,10 @@ def main():
                 save_dtm_outputs(topics_over_time, fig, name, dtm_dir)
 
         except Exception as e:
-            print(f"    DTM failed for {name}: {e}")
+            print(f"DTM failed for {name}: {e}")
             traceback.print_exc()
             continue
 
     print("\n" + "=" * 60)
-    print("Pipeline finished successfully.")
+    print("Dynamic Topic Modeling complete.")
     print("=" * 60)
-
-if __name__ == "__main__":
-    try:
-        main()
-    except Exception:
-        print("Exception in pipeline:")
-        traceback.print_exc()
-        pass
