@@ -5,6 +5,7 @@ import warnings
 import traceback
 from pathlib import Path
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 import pandas as pd
 from dotenv import load_dotenv
@@ -21,6 +22,9 @@ from hdbscan import HDBSCAN
 print("Dependencies imported!")
 
 warnings.filterwarnings("ignore")
+
+current_time = datetime.now(ZoneInfo("America/New_York")).strftime('%m %d - %H %M Hours')
+print(current_time)
 
 # Dataset size-specific hyperparameters for BERT modeling.
 DATASET_PARAMS = {
@@ -107,8 +111,14 @@ def process_datasets(data_path, text_cols=('body', 'text')):
 
     return dfs, docs_dict, datasets
 
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
 def create_directories(code_dir):
-    base = Path(code_dir) / "outputs"
+    current_time = datetime.now(ZoneInfo("America/New_York")).strftime("%m-%d - %H:%M")
+
+    outputs_dir = Path(code_dir) / "outputs"
+    base = outputs_dir / current_time
 
     directories = {
         "models": base / "models",
@@ -119,7 +129,7 @@ def create_directories(code_dir):
     }
 
     for path in directories.values():
-        path.mkdir(parents=True, exist_ok=True) #again, check docs
+        path.mkdir(parents=True, exist_ok=True)
 
     return (
         directories["models"],
@@ -209,6 +219,7 @@ def bert_model(dataset_name, docs, embeddings, embedding_model, params=None):
         vectorizer_model=vectorizer_model,
         representation_model=representation_model,
         min_topic_size=params.get("min_topic_size", 7),
+        #nr_topics=params["nr_topics"], # dealing with the ValueError: zero-size array
         nr_topics=params["nr_topics"],
     )
 
@@ -307,7 +318,13 @@ def update_model(name, dfs, docs, topic_models, docs_dict, dirs, core_topics_dic
     figure_topics = topic_model_clustered.visualize_topics()
     figure_barchart = topic_model_clustered.visualize_barchart(top_n_topics=len(core_topics), n_words=10)
 
-    figure_barchart.update_layout(width=1800, height=1000, title=f"{name} Topic Barchart")
+    # resizing figures to be larger
+    WIDTH = 1800
+    HEIGHT = 1000
+
+    figure_hierarchy.update_layout(width=WIDTH, height=HEIGHT, title=f"{name} Topic Hierarchy")
+    figure_topics.update_layout(width=WIDTH, height=HEIGHT, title=f"{name} Topic Map")
+    figure_barchart.update_layout(width=WIDTH, height=HEIGHT, title=f"{name} Topic Barchart")
 
     figure_hierarchy.write_html(os.path.join(hierarchy_dir, f"{name}HRC.html"))
     figure_topics.write_html(os.path.join(IDM_dir, f"{name}IDM.html"))
