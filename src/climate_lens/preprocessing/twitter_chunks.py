@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 import pandas as pd
 
-### Split Cleaned CSV Into 32 Chunks
+### Split Cleaned CSV Into n Chunks
 
 n_chunks = 32
 chunk_size = len(df_full) // n_chunks + (len(df_full)%n_chunks > 0)
