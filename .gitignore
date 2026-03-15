@@ -1,4 +1,22 @@
-.env
+# Secrets & Environment Variables
+.env*
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Dependencies/Logs
 __pycache__/
 *.pyc
 *.pyo
+*.log
+
+# IDE/Editor
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+
+# Cache directories
+.cache/
+.pytest_cache/
