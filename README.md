@@ -111,7 +111,7 @@ make clean        # remove compiled Python files
 ClimateLens/
 │
 ├── src/
-│   └── climate_lens/               # Core Python package
+│   └── climatelens/                # Core Python package
 │        ├── preprocessing/         # Data cleaning pipelines
 │        ├── models/                # ML models and classifiers
 │        ├── topic_modeling/        # Topic modeling implementations

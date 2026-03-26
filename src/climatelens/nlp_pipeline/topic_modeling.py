@@ -54,37 +54,6 @@ DATASET_PARAMS = {
     }
 }
 
-def process_datasets(data_path, text_cols=('body', 'text')):
-    datasets, dfs, docs_dict, failed = {}, {}, {}, []
-    data_path = Path(data_path)
-
-    for file_path in data_path.glob("*.csv"):
-        name = re.sub(r"(_clean|filtered_)?\.csv$", "", file_path.stem)
-        datasets[name] = file_path
-
-        try:
-            df = pd.read_csv(file_path)
-            text_col = next((c for c in text_cols if c in df.columns), None)
-
-            if not text_col:
-                print(f"Skipping {name}. No {text_cols} column found.")
-                failed.append(name)
-                continue
-
-            dfs[name] = df
-            docs_dict[name] = df[df[text_col].notna()][text_col].tolist()
-            print(f"Loaded {name} ({len(dfs[name])} rows) from: {file_path}")
-
-        except Exception as e:
-            print(f"Error loading {name}: {e}")
-            failed.append(name)
-
-    print(f"{len(dfs)}/{len(datasets)} datasets loaded successfully")
-    if failed:
-        print(f"Failed to load: {', '.join(failed)}")
-
-    return dfs, docs_dict, datasets
-
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
@@ -318,7 +287,7 @@ def save_dataframe_inplace(path, df):
     except Exception as e:
         print(f"Failed to save CSV: {e}")
 
-from climate_lens.utils.load_env import load_environment()
+from utils.load_env import load_environment()
 data_dir, code_dir, JUPYTER = load_environment()
 
 import sys
@@ -328,9 +297,9 @@ print("Importing DTM file...")
 from dynamic_topic_modeling import run_dynamic_topic_modeling
 
 def main():
+    from utils import process_datasets
     dfs, docs_dict, datasets = process_datasets(data_dir)
 
-    # Updated to include dtm_dir
     model_dir, IDM_dir, hierarchy_dir, barchart_dir, dtm_dir = create_directories(code_dir)
     dirs = (model_dir, IDM_dir, hierarchy_dir, barchart_dir, dtm_dir) # look into changing this?
 
