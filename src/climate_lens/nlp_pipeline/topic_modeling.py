@@ -8,9 +8,6 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 import pandas as pd
-from dotenv import load_dotenv
-
-!pip install -qq bertopic sentence-transformers umap-learn hdbscan
 
 print("Importing dependencies...")
 from bertopic import BERTopic
@@ -56,29 +53,6 @@ DATASET_PARAMS = {
         "nr_topics": "auto"
     }
 }
-
-def load_environment():
-    JUPYTER = False
-    try:
-        import google.colab
-        from google.colab import drive
-        drive.mount("/content/drive")
-
-        base_path = "/content/drive/MyDrive/ClimateLens/02 Code/02.01 MVP2/"
-        env_path = Path(base_path) / "colab.env"
-        JUPYTER = True
-    except ImportError:
-        env_path = Path(__file__).resolve().parent.parent / ".env"
-        JUPYTER = False
-
-    if env_path.exists():
-        load_dotenv(env_path)
-        data_dir, code_dir = os.getenv("DATA_DIR"), os.getenv("CODE_DIR")
-    else:
-        raise FileNotFoundError(f".env file not found at {env_path}")
-    print("Loaded environment variables")
-
-    return data_dir, code_dir, JUPYTER
 
 def process_datasets(data_path, text_cols=('body', 'text')):
     datasets, dfs, docs_dict, failed = {}, {}, {}, []
@@ -344,6 +318,7 @@ def save_dataframe_inplace(path, df):
     except Exception as e:
         print(f"Failed to save CSV: {e}")
 
+from climate_lens.utils.load_env import load_environment()
 data_dir, code_dir, JUPYTER = load_environment()
 
 import sys
