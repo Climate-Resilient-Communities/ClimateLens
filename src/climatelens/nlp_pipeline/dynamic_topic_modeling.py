@@ -28,9 +28,9 @@ def prepare_timestamps(dfs, name):
             break
 
     if not found_col:
-        print(f"  No timestamp column found for {name}. Checked: {timestamp_cols}")
-        print(f"   Available columns: {list(df.columns)}")
-        print(f"   Skipping Dynamic Topic Modeling for {name}.")
+        print(f"No timestamp column found for {name}. Checked: {timestamp_cols}")
+        print(f"Available columns: {list(df.columns)}")
+        print(f"Skipping Dynamic Topic Modeling for {name}.")
         return None
 
     print(f" Found timestamp column '{found_col}' for {name}")
@@ -54,10 +54,10 @@ def prepare_timestamps(dfs, name):
         invalid_count = len(timestamps) - len(valid_timestamps)
 
         if invalid_count > 0:
-            print(f"     {invalid_count}/{len(timestamps)} timestamps could not be parsed")
+            print(f"{invalid_count}/{len(timestamps)} timestamps could not be parsed")
 
         if len(valid_timestamps) == 0:
-            print(f"    No valid timestamps found for {name}. Skipping DTM.")
+            print(f"No valid timestamps found for {name}. Skipping DTM.")
             return None
 
         # Print time range info
@@ -65,17 +65,17 @@ def prepare_timestamps(dfs, name):
         max_date = max(valid_timestamps)
         time_span_days = (max_date - min_date).days
 
-        print(f"    Time range: {min_date.strftime('%Y-%m-%d')} to {max_date.strftime('%Y-%m-%d')}")
-        print(f"    Time span: {time_span_days} days (~{time_span_days/365:.1f} years)")
+        print(f"Time range: {min_date.strftime('%Y-%m-%d')} to {max_date.strftime('%Y-%m-%d')}")
+        print(f"Time span: {time_span_days} days (~{time_span_days/365:.1f} years)")
 
         # Check if time span is meaningful for DTM
         if time_span_days < 7:
-            print(f"     Time span less than 1 week. DTM may not be meaningful.")
+            print(f"Time span less than 1 week. DTM may not be meaningful.")
 
         return timestamps
 
     except Exception as e:
-        print(f"    Error parsing timestamps for {name}: {e}")
+        print(f"Error parsing timestamps for {name}: {e}")
         traceback.print_exc()
         return None
 
@@ -133,7 +133,7 @@ def perform_dynamic_topic_modeling(topic_model, docs, timestamps, name, nr_bins=
         nr_bins = calculate_optimal_bins(timestamps)
 
     print(f"\n Performing Dynamic Topic Modeling for {name}...")
-    print(f"   Using {nr_bins} temporal bins, visualizing top {top_n_topics} topics")
+    print(f"Using {nr_bins} temporal bins, visualizing top {top_n_topics} topics")
 
     start_time = time.time()
 
@@ -157,13 +157,13 @@ def perform_dynamic_topic_modeling(topic_model, docs, timestamps, name, nr_bins=
         )
 
         elapsed_time = time.time() - start_time
-        print(f"    DTM completed in {elapsed_time:.2f} seconds")
-        print(f"    Generated {len(topics_over_time)} temporal data points")
+        print(f"DTM completed in {elapsed_time:.2f} seconds")
+        print(f"Generated {len(topics_over_time)} temporal data points")
 
         return topics_over_time, fig
 
     except Exception as e:
-        print(f"    Error during DTM for {name}: {e}")
+        print(f"Error during DTM for {name}: {e}")
         traceback.print_exc()
         return None, None
 
@@ -205,7 +205,7 @@ def run_dynamic_topic_modeling(dfs, topic_models, docs_dict, dtm_dir):
         print(f"\n{'─' * 40}")
         print(f"Processing {name} for DTM...")
 
-        # Step 1: Prepare timestamps
+        # Prepare timestamps
         timestamps = prepare_timestamps(dfs, name)
 
         if timestamps is None:
@@ -213,7 +213,7 @@ def run_dynamic_topic_modeling(dfs, topic_models, docs_dict, dtm_dir):
             continue
 
         try:
-            # Step 2: Use existing trained model
+            #Use existing trained model
             model = topic_models.get(name)
             if model is None:
                 print(f"Skipping DTM for {name} (no trained model)")
@@ -228,7 +228,7 @@ def run_dynamic_topic_modeling(dfs, topic_models, docs_dict, dtm_dir):
                 top_n_topics=10
             )
 
-            # Step 3: Save outputs
+            # Save outputs
             if topics_over_time is not None and fig is not None:
                 save_dtm_outputs(topics_over_time, fig, name, dtm_dir)
 

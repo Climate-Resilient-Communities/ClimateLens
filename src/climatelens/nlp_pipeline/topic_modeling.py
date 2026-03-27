@@ -1,29 +1,17 @@
-import os
-import re
-import time
-import warnings
-import traceback
+import time, traceback
 from pathlib import Path
-from datetime import datetime
-from zoneinfo import ZoneInfo
-
 import pandas as pd
 
-print("Importing dependencies...")
 from bertopic import BERTopic
 from bertopic.representation import MaximalMarginalRelevance
 from sklearn.feature_extraction.text import CountVectorizer
-from sentence_transformers import SentenceTransformer
 from umap import UMAP
 from hdbscan import HDBSCAN
-print("Dependencies imported!")
 
+import warnings
 warnings.filterwarnings("ignore")
 
-current_time = datetime.now(ZoneInfo("America/New_York")).strftime('%m %d - %H %M Hours')
-print(current_time)
-
-# Dataset size-specific hyperparameters for BERT modeling.
+# Dataset-specific configs
 DATASET_PARAMS = {
     "twitter": {
         "min_df": 0.05,
@@ -51,57 +39,8 @@ DATASET_PARAMS = {
         "min_samples": 3,
         "min_topic_size": 15,
         "nr_topics": "auto"
-    }
+    } # fallback for visualization error (less than 4 topics)
 }
-
-from datetime import datetime
-from zoneinfo import ZoneInfo
-
-def create_directories(code_dir):
-    current_time = datetime.now(ZoneInfo("America/New_York")).strftime("%m-%d - %H:%M")
-
-    outputs_dir = Path(code_dir) / "outputs"
-    base = outputs_dir / current_time
-
-    directories = {
-        "models": base / "models",
-        "IDM": base / "visualizations" / "IDM",
-        "hierarchies": base / "visualizations" / "hierarchies",
-        "barcharts": base / "visualizations" / "barcharts",
-        "dtm": base / "visualizations" / "dtm",
-    }
-
-    for path in directories.values():
-        path.mkdir(parents=True, exist_ok=True)
-
-    return (
-        directories["models"],
-        directories["IDM"],
-        directories["hierarchies"],
-        directories["barcharts"],
-        directories["dtm"],
-    )
-
-def compute_embeddings(docs_dict):
-    DEFAULT_EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L12-v2"
-    TWITTER_EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L12-v2"
-
-    embeddings_dict = {}
-    embedding_models = {}
-
-    for name, docs in docs_dict.items():
-        model_name = DEFAULT_EMBEDDING_MODEL
-
-        if model_name not in embedding_models:
-            embedding_models[model_name] = SentenceTransformer(model_name)
-
-        embedding_model = embedding_models[model_name]
-
-        print(f"Computing {name} embeddings using {model_name}...")
-        embeddings_dict[name] = embedding_model.encode(docs, batch_size=128, show_progress_bar=True)
-        embedding_models[name] = embedding_model
-
-    return embeddings_dict, embedding_models
 
 def create_submodels(params=None):
     params = params or {
@@ -162,8 +101,7 @@ def bert_model(dataset_name, docs, embeddings, embedding_model, params=None):
         vectorizer_model=vectorizer_model,
         representation_model=representation_model,
         min_topic_size=params.get("min_topic_size", 7),
-        #nr_topics=params["nr_topics"], # dealing with the ValueError: zero-size array
-        nr_topics=params["nr_topics"],
+        nr_topics=params["nr_topics"], # dealing with the ValueError: zero-size array
     )
 
     start_time = time.time()
@@ -183,98 +121,6 @@ def bert_model(dataset_name, docs, embeddings, embedding_model, params=None):
         elapsed_seconds = end_time - start_time
         print(f"{dataset_name} topic modeling completed in {elapsed_seconds:.3f} seconds")
 
-def annotate_data(dfs, name, JUPYTER, topics_dict, probs_dict, topic_info_dict):
-    dfs[name]["topic"] = topics_dict[name]
-    dfs[name]["topic_proba"] = probs_dict[name]
-
-    if JUPYTER:
-        from IPython.display import display
-        print("Processed data (sample):\n")
-        display(dfs[name].sample(n=min(3, len(dfs[name]))))
-
-        print(f"\nNumber of topics (including outlier): {len(topic_info_dict[name])}\n")
-        display(topic_info_dict[name].sample(n=min(4, len(topic_info_dict[name]))))
-
-def process_topic_merges(dfs, topic_info_dict, name, topic_col="topic", repr_docs_col="Representative_Docs"):
-    # Drop any existing merge columns to avoid duplicates
-    cols_to_drop = [c for c in dfs[name].columns if c.endswith('_x') or c.endswith('_y') or c in ['Name', 'Representation', 'Representative_Docs']]
-    dfs[name] = dfs[name].drop(columns=cols_to_drop, errors='ignore')
-    df = dfs[name].merge(
-        topic_info_dict[name][["Topic", "Name", "Representation", repr_docs_col]],
-        left_on=topic_col,
-        right_on="Topic",
-        how="left",
-    )
-    if "Topic" in df.columns:
-      del df["Topic"]
-
-    is_repr_col = f"is_representative{'_core' if 'core' in topic_col else ''}"
-    df[is_repr_col] = df.apply(
-        lambda row: 1
-        if isinstance(row.get(repr_docs_col), list) and row.get("cleaned_text") in row.get(repr_docs_col)
-        else 0,
-        axis=1,
-    )
-    return df
-
-def process_core_topics(dfs, name, core_topics, topics_dict, probs_dict):
-    dfs[name]["core_topic"] = topics_dict[name]
-    dfs[name]["core_topic_proba"] = probs_dict[name]
-
-    core_topics = core_topics.rename(
-        columns={
-            "Name": "Name_core",
-            "Representation": "Representation_core",
-            "Representative_Docs": "Representative_Docs_core",
-        }
-    )
-
-    dfs[name] = dfs[name].merge(
-        core_topics[["Topic", "Name_core", "Representation_core", "Representative_Docs_core"]],
-        left_on="core_topic",
-        right_on="Topic",
-        how="left",
-    )
-
-    dfs[name]["is_representative_core"] = dfs[name].apply(
-        lambda row: 1
-        if isinstance(row.get("Representative_Docs_core"), list)
-        and row.get("cleaned_text") in row.get("Representative_Docs_core")
-        else 0,
-        axis=1,
-    )
-
-    return core_topics
-
-def update_model(name, dfs, docs, topic_models, docs_dict, dirs, core_topics_dict, topics_dict, probs_dict, nr_topics=30):
-    model_dir, IDM_dir, hierarchy_dir, barchart_dir, dtm_dir = dirs  # Updated to include dtm_dir ????????????
-    topic_model = topic_models[name]
-
-    topic_model_clustered = topic_model.reduce_topics(docs_dict[name], nr_topics=nr_topics)
-    topic_model_clustered.update_topics(docs_dict[name], n_gram_range=(3, 5))
-
-    core_topics = topic_model_clustered.get_topic_info()
-    core_topics = process_core_topics(dfs, name, core_topics, topics_dict, probs_dict)
-    core_topics_dict[name] = core_topics
-
-    figure_hierarchy = topic_model_clustered.visualize_hierarchy()
-    figure_topics = topic_model_clustered.visualize_topics()
-    figure_barchart = topic_model_clustered.visualize_barchart(top_n_topics=len(core_topics), n_words=10)
-
-    # resizing figures to be larger
-    WIDTH = 1800
-    HEIGHT = 1000
-
-    figure_hierarchy.update_layout(width=WIDTH, height=HEIGHT, title=f"{name} Topic Hierarchy")
-    figure_topics.update_layout(width=WIDTH, height=HEIGHT, title=f"{name} Topic Map")
-    figure_barchart.update_layout(width=WIDTH, height=HEIGHT, title=f"{name} Topic Barchart")
-
-    figure_hierarchy.write_html(os.path.join(hierarchy_dir, f"{name}HRC.html"))
-    figure_topics.write_html(os.path.join(IDM_dir, f"{name}IDM.html"))
-    figure_barchart.write_html(os.path.join(barchart_dir, f"{name}BRC.html"))
-
-    return topic_model_clustered
-
 def save_and_reload_model(name, model_dir, topic_models):
     save_path = Path(model_dir) / f"{name}.safetensors"
     topic_models[name].save(str(save_path), serialization="safetensors")
@@ -286,150 +132,3 @@ def save_dataframe_inplace(path, df):
         print(f"Saved updated dataframe back to {path}")
     except Exception as e:
         print(f"Failed to save CSV: {e}")
-
-from utils.load_env import load_environment()
-data_dir, code_dir, JUPYTER = load_environment()
-
-import sys
-sys.path.append(code_dir)
-
-print("Importing DTM file...")
-from dynamic_topic_modeling import run_dynamic_topic_modeling
-
-def main():
-    from utils import process_datasets
-    dfs, docs_dict, datasets = process_datasets(data_dir)
-
-    model_dir, IDM_dir, hierarchy_dir, barchart_dir, dtm_dir = create_directories(code_dir)
-    dirs = (model_dir, IDM_dir, hierarchy_dir, barchart_dir, dtm_dir) # look into changing this?
-
-    embeddings_dict, embedding_models = compute_embeddings(docs_dict)
-
-    topic_models, topics_dict, probs_dict = {}, {}, {}
-    topic_info_dict, core_topics_dict = {}, {}
-
-    # Train models
-    for name, docs in docs_dict.items():
-        try:
-            print("\n" + "=" * 60 + f"\n{name.upper()}:\n")
-            params = DATASET_PARAMS.get(name, DATASET_PARAMS["reddit"])
-            topic_model, topics, probs = bert_model(
-                dataset_name=name,
-                docs=docs,
-                embeddings=embeddings_dict[name],
-                embedding_model=embedding_models[name],
-                params=params,
-            )
-
-        except ValueError as e:
-            if "After pruning, no terms remain" not in str(e):
-                raise  # re-raise unexpected ValueErrors
-
-            # popular BERTopic / c-TF-IDF failure. using fallback params
-            print(f"Using smaller reddit parameters for {name}\n")
-            params = DATASET_PARAMS.get(name, DATASET_PARAMS["reddit_small"])
-            topic_model, topics, probs = bert_model(
-                dataset_name=name,
-                docs=docs,
-                embeddings=embeddings_dict[name],
-                embedding_model=embedding_models[name],
-                params=params,
-            )
-
-        topic_models[name] = topic_model
-        topics_dict[name] = topics
-        probs_dict[name] = probs
-
-        if topic_models[name] is None:
-            print(f"Skipping {name}: no valid topic model")
-            continue
-
-    # Post-process & annotate
-    for name in dfs.keys():
-        if topic_models.get(name) is None:
-            print(f"Skipping post-processing for {name} since there's no topic model")
-            continue
-        topic_info_dict[name] = topic_models[name].get_topic_info()
-        annotate_data(
-            dfs, name, JUPYTER,
-            topics_dict, probs_dict, topic_info_dict=topic_info_dict
-        )
-        process_topic_merges(dfs, topic_info_dict, name)
-
-    # Update models and generate static visualizations
-    for name in dfs.keys():
-        try:
-            params = DATASET_PARAMS.get(name, DATASET_PARAMS["reddit"])
-            topic_models[name] = update_model(
-                name=name,
-                dfs=dfs,
-                docs=docs_dict[name],
-                topic_models=topic_models,
-                docs_dict=docs_dict,
-                dirs=dirs,
-                core_topics_dict=core_topics_dict,
-                topics_dict=topics_dict,
-                probs_dict=probs_dict,
-                nr_topics=params["nr_topics"],
-            )
-            save_dataframe_inplace(datasets[name], dfs[name])
-            save_and_reload_model(name, model_dir, topic_models)
-
-        except ValueError as e:
-            if "After pruning, no terms remain" not in str(e):
-                # if it's unexpected, log and continue (don't kill entire pipeline)
-                print(f"Unexpected ValueError when updating {name}: {e}")
-                traceback.print_exc()
-                continue
-
-            print(f"Using smaller reddit parameters for {name}\n")
-            try:
-                params = DATASET_PARAMS.get(name, DATASET_PARAMS["reddit_small"])
-                topic_models[name] = update_model(
-                    name=name,
-                    dfs=dfs,
-                    docs=docs_dict[name],
-                    topic_models=topic_models,
-                    docs_dict=docs_dict,
-                    dirs=dirs,
-                    core_topics_dict=core_topics_dict,
-                    topics_dict=topics_dict,
-                    probs_dict=probs_dict,
-                    nr_topics=params["nr_topics"],
-                )
-                save_dataframe_inplace(datasets[name], dfs[name])
-                save_and_reload_model(name, model_dir, topic_models)
-            except Exception:
-                print(f"Failed updating {name} even with smaller params; skipping.")
-                traceback.print_exc()
-                continue
-
-        except Exception as e:
-            print(f"Unexpected error when updating model {name}: {e}")
-            traceback.print_exc()
-            # continue to next dataset instead of aborting the whole pipeline
-            continue
-
-    # Running dtm
-    try:
-        run_dynamic_topic_modeling(
-            dfs=dfs,
-            topic_models=topic_models,
-            docs_dict=docs_dict,
-            dtm_dir=dtm_dir
-        )
-    except Exception as e:
-        print(f"DTM stage failed: {e}")
-        traceback.print_exc()
-
-    print("\n" + "=" * 60)
-    print("Pipeline finished successfully.")
-    print("=" * 60)
-
-if __name__ == "__main__":
-    try:
-        main()
-    except Exception:
-        print("Exception in pipeline:")
-        traceback.print_exc()
-        pass
