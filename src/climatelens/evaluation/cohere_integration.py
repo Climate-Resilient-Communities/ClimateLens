@@ -44,8 +44,8 @@ def cohere_integration():
         return None
 
 cohere_model = cohere_integration()
-    if cohere_model:
-        representation_model = [mmr_model, cohere_model]
-        print(f"Using MMR + Cohere for representation")
-    else:
-        representation_model = mmr_model
+if cohere_model:
+    representation_model = [mmr_model, cohere_model]
+    print(f"Using MMR + Cohere for representation")
+else:
+    representation_model = mmr_model

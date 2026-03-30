@@ -6,7 +6,7 @@ umap-learn==0.5.6    # Non-linear dimensionality reduction for visualizations
 hdbscan==0.8.38.post1 # Density-based clustering algorithm
 bertopic==0.16.4     # Topic modeling using transformers-based embeddings
 mlflow==2.14.3       # Model tracking, packaging, and deployment
-# cohere
+# cohere               # Topic representations
 
 ### Data Manipulation
 
@@ -15,8 +15,7 @@ pandas==2.2.2        # Data manipulation and analysis
 
 ### Data Visualization
 
-# Interactive plotting and visualizations
-matplotlib==3.10.0
+matplotlib==3.10.0   # Interactive plotting and visualizations
 seaborn==0.13.2
 plotly==5.23.0       # Visualization library for creating interactive plots
 kaleido==0.2.1       # For saving plots as PNG, PDF, etc.

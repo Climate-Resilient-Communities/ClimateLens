@@ -1,14 +1,6 @@
-#################################################################################
-# GLOBALS                                                                       #
-#################################################################################
-
 PROJECT_NAME = climate-lens
 PYTHON_VERSION = 3.10
 PYTHON_INTERPRETER = python
-
-#################################################################################
-# ENVIRONMENT SETUP                                                             #
-#################################################################################
 
 ## Create virtual environment
 .PHONY: create_environment
@@ -31,10 +23,6 @@ install-dev:
 	$(PYTHON_INTERPRETER) -m pip install --upgrade pip
 	$(PYTHON_INTERPRETER) -m pip install -e .[dev]
 
-#################################################################################
-# CODE QUALITY                                                                  #
-#################################################################################
-
 ## Run linting
 .PHONY: lint
 lint:
@@ -46,18 +34,10 @@ format:
 	ruff check --fix .
 	black .
 
-#################################################################################
-# TESTING                                                                       #
-#################################################################################
-
 ## Run tests
 .PHONY: test
 test:
 	pytest
-
-#################################################################################
-# CLEAN                                                                         #
-#################################################################################
 
 ## Remove Python cache files
 .PHONY: clean
@@ -66,24 +46,6 @@ clean:
 	find . -type d -name "__pycache__" -delete
 	rm -rf .pytest_cache
 	rm -rf .ruff_cache
-
-#################################################################################
-# DATA                                                                          #
-#################################################################################
-
-## Download Data from Azure
-.PHONY: sync_data_down
-sync_data_down:
-	az storage blob download-batch -s phase1/data/ -d data/
-
-## Upload Data to Azure
-.PHONY: sync_data_up
-sync_data_up:
-	az storage blob upload-batch -d phase1/data/ -s data/
-
-#################################################################################
-# SELF DOCUMENTING COMMANDS                                                     #
-#################################################################################
 
 .DEFAULT_GOAL := help
 

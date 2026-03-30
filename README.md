@@ -16,7 +16,6 @@ The production application is deployed on HuggingFace Spaces using Streamlit, wh
 + Interactive visualizations for exploring topics, emotions, and trends within climate-related text datasets.
 + A Streamlit interface hosted on HuggingFace Spaces for applying models and visualizing results.
 
-
 # ⚙️ Setup
 
 ## 1. Clone the repository
@@ -104,7 +103,6 @@ make format       # auto-format Python files
 make clean        # remove compiled Python files
 ```
 
-
 # 📂 Project Structure
 
 ```
@@ -118,7 +116,7 @@ ClimateLens/
 │        ├── evaluation/            # Metrics and evaluation logic
 │        └── utils/                 # Shared helper utilities
 │
-├── notebooks/                      # Exploratory analysis notebooks
+├── docs/                           # Documentation
 ├── scripts/                        # Standalone scripts for running pipelines
 │
 ├── data/                           # Example datasets
@@ -140,7 +138,6 @@ ClimateLens/
 ├── LICENSE
 └── .gitignore
 ```
-
 
 # ☁️ Azure Machine Learning Execution
 
@@ -167,13 +164,11 @@ AML_job.py
 
 These scripts together define and launch the AzureML job.
 
-
 # 🤝 Contributing
 
-This repository is currently maintained internally by Climate Resilient Communities.
+This repository is currently maintained internally by Sprout.
 
 Plans are underway to make ClimateLens fully open-source and open to community contributions in the future.
-
 
 # 📜 License
 
