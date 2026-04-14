@@ -46,7 +46,7 @@ def load_environment():
 
 data_dir, reddit_raw_dir = load_environment()
 if not data_dir or not reddit_raw_dir:
-    raise EnvironmentError("DATA_DIR and CODE_DIR must be set in the .env file.")
+    raise EnvironmentError("DATA_DIR and REDDIT_RAW_DIR must be set in the .env file.")
 
 ### Batch process folder of JSONL files
 input_folder = Path(reddit_raw_dir)

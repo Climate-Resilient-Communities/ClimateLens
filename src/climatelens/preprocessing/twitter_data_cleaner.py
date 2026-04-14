@@ -68,4 +68,4 @@ with open(output_path, "w", encoding="utf-8", newline="") as csvfile:
                 continue
 
 df_full = pd.read_csv(output_path)
-print(f"Twitter dataframe information:/n{df_full.info()}")
+print(f"Twitter dataframe information:\n{df_full.info()}")

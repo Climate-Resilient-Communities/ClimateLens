@@ -59,21 +59,29 @@ def build_custom_stopwords():
     return custom_stopwords
 
 
-def load_datasets(data_path, prefix, datasets):
+def load_datasets(data_path, prefixes, datasets):
     """
-    Scan a directory for CSV files matching a prefix and add them to datasets dict.
+    Scan a directory for CSV files and add them to datasets dict, stripping
+    any matching prefixes (e.g. "filtered_", "clean_") from the dataset name.
 
     Args:
         data_path: Path to directory containing CSV files
-        prefix: File prefix to filter (e.g., "filtered_" or "clean_")
+        prefixes: Iterable of file prefixes to strip
         datasets: Dictionary to populate with {name: file_path}
     """
     for file in os.listdir(data_path):
         file_path = os.path.join(data_path, file)
 
-        if os.path.isfile(file_path) and file.endswith('.csv'):
-            file_name = file.replace(prefix, "").replace(".csv", "")
-            datasets[file_name] = file_path
+        if not (os.path.isfile(file_path) and file.endswith('.csv')):
+            continue
+
+        file_name = file[:-len(".csv")]
+        for prefix in prefixes:
+            if file_name.startswith(prefix):
+                file_name = file_name[len(prefix):]
+                break
+
+        datasets[file_name] = file_path
 
 
 def loading_datasets(datasets):
@@ -205,8 +213,7 @@ def run_pipeline(data_path):
 
     # Discover datasets
     datasets = {}
-    load_datasets(data_path, "filtered_", datasets)
-    load_datasets(data_path, "clean_", datasets)
+    load_datasets(data_path, ("filtered_", "clean_"), datasets)
 
     if not datasets:
         print(f"No datasets found in {data_path}")

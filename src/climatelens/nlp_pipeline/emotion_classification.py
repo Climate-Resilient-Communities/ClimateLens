@@ -41,12 +41,16 @@ def load_environment() -> Dict[str, Path]:
         else:
             raise FileNotFoundError("No .env found")
 
+        missing = [
+            v for v in ("DATA_DIR", "OUTPUT_DATA_DIR", "OUTPUT_VIS_DIR")
+            if not os.environ.get(v)
+        ]
+        if missing:
+            raise KeyError(f"Missing required env vars in .env: {missing}")
+
         input_data_dir  = Path(os.environ["DATA_DIR"])
         output_data_dir = Path(os.environ["OUTPUT_DATA_DIR"])
         output_vis_dir  = Path(os.environ["OUTPUT_VIS_DIR"])
-
-        if not data_dir or not output_dir:
-            raise KeyError("DATA_DIR or OUTPUT_DIR missing in .env")
 
     # Ensure directories exist
     output_data_dir.mkdir(parents=True, exist_ok=True)
@@ -88,9 +92,9 @@ def process_datasets(data_path):
 
         print(f'Loaded {name}')
 
-        print(f"\n{len(dfs)}/{len(datasets)} datasets loaded successfully.")
-        if failed:
-          print("Failed to load:", ", ".join(failed))
+    print(f"\n{len(dfs)}/{len(datasets)} datasets loaded successfully.")
+    if failed:
+        print("Failed to load:", ", ".join(failed))
 
     return dfs, docs_dict, datasets, failed
 
