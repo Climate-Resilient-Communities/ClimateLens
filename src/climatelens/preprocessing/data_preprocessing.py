@@ -1,14 +1,36 @@
-#text cleaning and preprocessing for Twitter and Reddit datasets.
+"""
+Data Preprocessing Pipeline for Climate NLP Project.
 
-import os
+This module provides text cleaning and preprocessing for Twitter and Reddit
+datasets. It reads from ``runtime.data_dir`` (read-only) and writes cleaned
+copies to ``runtime.processed_data_dir`` - the raw inputs are never modified.
+
+Usage::
+
+    python src/data_preprocessing.py
+"""
+
+from __future__ import annotations
+
 import re
+import sys
 from pathlib import Path
+from typing import Iterable, List, Optional
 
-import pandas as pd
 import nltk
+import pandas as pd
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
-from dotenv import load_dotenv
+
+# Add src/ to sys.path so utils imports resolve when run as a script.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from utils.datasets import DatasetSpec, discover_datasets  # noqa: E402
+from utils.io_helpers import drop_missing_text, safe_write_csv  # noqa: E402
+from utils.logging_config import get_logger  # noqa: E402
+from utils.runtime import load_runtime  # noqa: E402
+
+log = get_logger(__name__)
 
 
 # =============================================================================
@@ -16,204 +38,265 @@ from dotenv import load_dotenv
 # =============================================================================
 
 SWEAR_VARIANTS = [
-    'fuck', 'fucking', 'fucked', 'fuckin', 'fck', 'f*ck', 'f@ck',
-    'shit', 'shitty', 'shitshow', 'bullshit', 'bs', 'sh*t',
-    'ass', 'asshole', 'a**', 'arse',
-    'bitch', 'b*tch',
-    'damn', 'd*mn',
-    'crap', 'dick', 'pussy', 'piss', 'prick',
-    'whore', 'slut', 'cunt', 'mf', 'motherfucker',
+    "fuck",
+    "fucking",
+    "fucked",
+    "fuckin",
+    "fck",
+    "f*ck",
+    "f@ck",
+    "shit",
+    "shitty",
+    "shitshow",
+    "bullshit",
+    "bs",
+    "sh*t",
+    "ass",
+    "asshole",
+    "a**",
+    "arse",
+    "bitch",
+    "b*tch",
+    "damn",
+    "d*mn",
+    "crap",
+    "dick",
+    "pussy",
+    "piss",
+    "prick",
+    "whore",
+    "slut",
+    "cunt",
+    "mf",
+    "motherfucker",
 ]
 
 ADDITIONAL_STOPWORDS = [
-    'rt', 'tweet', 'repost', 'replied', 'comments', 'comment', 'upvote', 'downvote', 'subreddit',
-    'thread', 'user', 'followers', 'post', 'share', 'like', 'reply', 'hashtag', 'hashtags', 'link',
-    'bio', 'mention', 'tagged', 'followed', 'following', 'message', 'profile', 'climate', 'change',
-    'global', 'warming', 'yes', 'great', 'of',
-    'love', 'great', 'thank', 'you', 'good', 'like', 'go',
+    "rt",
+    "tweet",
+    "repost",
+    "replied",
+    "comments",
+    "comment",
+    "upvote",
+    "downvote",
+    "subreddit",
+    "thread",
+    "user",
+    "followers",
+    "post",
+    "share",
+    "like",
+    "reply",
+    "hashtag",
+    "hashtags",
+    "link",
+    "bio",
+    "mention",
+    "tagged",
+    "followed",
+    "following",
+    "message",
+    "profile",
+    "climate",
+    "change",
+    "global",
+    "warming",
+    "yes",
+    "great",
+    "of",
+    "love",
+    "great",
+    "thank",
+    "you",
+    "good",
+    "like",
+    "go",
     # Twitter-specific artifacts that slip through
-    'https', 'http', 'co', 'amp', 't', 'www', 'url', 'pic', 'twitter', 'com',
+    "https",
+    "http",
+    "co",
+    "amp",
+    "t",
+    "www",
+    "url",
+    "pic",
+    "twitter",
+    "com",
 ]
 
 # Words to preserve (negations, modals, interrogatives)
 PRESERVE_WORDS = {
-    'not', 'no', 'nor', 'should', 'could', 'would', 'must', 'might', 'may',
-    "don't", 'do', 'does', 'did', 'why', 'what', 'how', 'if', 'that', 'this',
-    'i', 'you', 'we', 'they', 'he', 'she', 'it'
+    "not",
+    "no",
+    "nor",
+    "should",
+    "could",
+    "would",
+    "must",
+    "might",
+    "may",
+    "don't",
+    "do",
+    "does",
+    "did",
+    "why",
+    "what",
+    "how",
+    "if",
+    "that",
+    "this",
+    "i",
+    "you",
+    "we",
+    "they",
+    "he",
+    "she",
+    "it",
 }
 
+MIN_DOCUMENT_WORDS = 3
+
+
 # =============================================================================
-# FUNCTIONS
+# TEXT CLEANING
 # =============================================================================
 
-def build_custom_stopwords():
-    """
-    Build the custom stopwords set by combining NLTK stopwords with our additions.
 
-    Returns:
-        set: Combined stopwords set with preserved words removed
-    """
+def build_custom_stopwords() -> set:
+    """Combine NLTK stopwords with project-specific additions."""
     stop_words = set(stopwords.words("english"))
-    custom_stopwords = stop_words.union(SWEAR_VARIANTS).union(ADDITIONAL_STOPWORDS)
-    custom_stopwords = custom_stopwords - PRESERVE_WORDS
-    return custom_stopwords
+    combined = stop_words.union(SWEAR_VARIANTS).union(ADDITIONAL_STOPWORDS)
+    return combined - PRESERVE_WORDS
 
 
-def load_datasets(data_path, prefixes, datasets):
-    """
-    Scan a directory for CSV files and add them to datasets dict, stripping
-    any matching prefixes (e.g. "filtered_", "clean_") from the dataset name.
-
-    Args:
-        data_path: Path to directory containing CSV files
-        prefixes: Iterable of file prefixes to strip
-        datasets: Dictionary to populate with {name: file_path}
-    """
-    for file in os.listdir(data_path):
-        file_path = os.path.join(data_path, file)
-
-        if not (os.path.isfile(file_path) and file.endswith('.csv')):
-            continue
-
-        file_name = file[:-len(".csv")]
-        for prefix in prefixes:
-            if file_name.startswith(prefix):
-                file_name = file_name[len(prefix):]
-                break
-
-        datasets[file_name] = file_path
-
-
-def loading_datasets(datasets):
-    """
-    Load CSV datasets into pandas DataFrames.
-
-    Args:
-        datasets: Dictionary of {name: file_path}
-
-    Returns:
-        dict: {name: DataFrame}
-    """
-    dfs = {}
-
-    for name, path in datasets.items():
-        try:
-            df = pd.read_csv(path)
-        except Exception as e:
-            print(f"Error reading {path}: {e}")
-            continue
-
-        # Identify text column
-        if "body" in df.columns:
-            text_col = "body"
-        elif "text" in df.columns:
-            text_col = "text"
-        else:
-            print(f"Skipping {name}. No 'body' or 'text' column.")
-            continue
-
-        print(f'Loaded {name}')
-        dfs[name] = df
-
-    return dfs
-
-
-def remove_consecutive_repeats(tokens):
-    """
-    Remove consecutive duplicate tokens.
-
-    Args:
-        tokens: List of tokens
-
-    Returns:
-        List of tokens with consecutive duplicates removed
-    """
+def remove_consecutive_repeats(tokens: List[str]) -> List[str]:
+    """Drop consecutive duplicate tokens (keeps the first occurrence)."""
     if not tokens:
         return tokens
-
     cleaned = [tokens[0]]
     for i in range(1, len(tokens)):
-        if tokens[i] != tokens[i-1]:
+        if tokens[i] != tokens[i - 1]:
             cleaned.append(tokens[i])
     return cleaned
 
 
-def highlight_issues(text):
-    """
-    Identify repeated words and profanity in text (for debugging).
-
-    Args:
-        text: Input text string
-
-    Returns:
-        Tuple of (repeated_words, slang_terms)
-    """
+def highlight_issues(text: str):
+    """Debug helper: return (repeated_words, slang_terms) found in *text*."""
     lowered = text.lower()
-    repeated = re.findall(r'\b(\w+)\s+\1\b', lowered)
+    repeated = re.findall(r"\b(\w+)\s+\1\b", lowered)
     slang = [word for word in SWEAR_VARIANTS if word in lowered]
     return repeated, slang
 
 
-def preprocess_text(text, custom_stopwords):
+_URL_PATTERNS = [
+    re.compile(r"http[s]?://\S+"),
+    re.compile(r"t\.co/\S+"),
+    re.compile(r"www\.\S+"),
+]
+_HANDLE_PATTERN = re.compile(r"@\w+")
+_RT_PATTERN = re.compile(r"\bRT\b|\brt\b", flags=re.IGNORECASE)
+_HTML_ENTITY_PATTERN = re.compile(r"&\w+;")
+_URL_FRAGMENT_PATTERN = re.compile(r"\b(https?|co|www|amp|pic)\b", flags=re.IGNORECASE)
+
+
+def preprocess_text(text: str, custom_stopwords: set) -> str:
     """
-    Clean and preprocess text for topic modeling.
+    Clean and preprocess a single text for downstream topic/emotion modeling.
 
     Applies Twitter-specific cleaning (URLs, handles, RT markers) followed by
-    tokenization, stopword removal, and deduplication.
-
-    Args:
-        text: Raw text string
-        custom_stopwords: Set of stopwords to remove
-
-    Returns:
-        Cleaned text string
+    tokenization, stopword removal, and consecutive-duplicate removal.
     """
-    # Apply regex cleaning BEFORE tokenization to remove Twitter artifacts
+    for pattern in _URL_PATTERNS:
+        text = pattern.sub("", text)
+    text = _HANDLE_PATTERN.sub("", text)
+    text = _RT_PATTERN.sub("", text)
+    text = _HTML_ENTITY_PATTERN.sub("", text)
+    text = _URL_FRAGMENT_PATTERN.sub("", text)
 
-    # Remove URLs (http, https, and t.co shortened links)
-    text = re.sub(r'http[s]?://\S+', '', text)
-    text = re.sub(r't\.co/\S+', '', text)
-    text = re.sub(r'www\.\S+', '', text)
-
-    # Remove Twitter handles (@username)
-    text = re.sub(r'@\w+', '', text)
-
-    # Remove retweet markers (RT, rt) at beginning of tweets
-    text = re.sub(r'\bRT\b|\brt\b', '', text, flags=re.IGNORECASE)
-
-    # Remove HTML entities like &amp;
-    text = re.sub(r'&\w+;', '', text)
-
-    # Remove standalone URL fragments (common leftovers: co, https, http)
-    text = re.sub(r'\b(https?|co|www|amp|pic)\b', '', text, flags=re.IGNORECASE)
-
-    # Tokenize and filter
     tokens = word_tokenize(text.lower())
     tokens = [t for t in tokens if t.isalpha() and t not in custom_stopwords]
     tokens = remove_consecutive_repeats(tokens)
+    return " ".join(tokens)
 
-    return ' '.join(tokens)
+
+# =============================================================================
+# PIPELINE
+# =============================================================================
 
 
-def run_pipeline(data_path):
+def _ensure_nltk_resources() -> None:
+    """Download required NLTK corpora if not already present."""
+    log.info("ensuring NLTK resources are available")
+    for resource in ("stopwords", "punkt_tab", "punkt"):
+        nltk.download(resource, quiet=True)
+
+
+def preprocess_dataset(
+    spec: DatasetSpec,
+    custom_stopwords: set,
+    processed_dir: Path,
+    *,
+    min_words: int = MIN_DOCUMENT_WORDS,
+) -> Path:
     """
-    Main processing pipeline: load datasets, clean text, and save results.
+    Clean a single dataset and write the result to ``processed_dir``.
 
-    Args:
-        data_path: Path to directory containing CSV files
+    Returns the path written. The original file in ``spec.path`` is never
+    modified.
     """
-    # Download NLTK data if needed
-    print("Ensuring NLTK data is available...")
-    nltk.download('stopwords', quiet=True)
-    nltk.download('punkt_tab', quiet=True)
-    nltk.download('punkt', quiet=True)
+    log.info("processing %s (%s)", spec.name, spec.path.name)
+    df = pd.read_csv(spec.path)
 
-    # Build stopwords set
+    if spec.text_column not in df.columns:
+        log.warning(
+            "skipping %s: text column %r missing (have %s)",
+            spec.name,
+            spec.text_column,
+            list(df.columns),
+        )
+        return spec.processed_path(processed_dir)
+
+    df = drop_missing_text(df, spec.text_column)
+
+    df[spec.cleaned_text_column] = (
+        df[spec.text_column].astype(str).apply(lambda x: preprocess_text(x, custom_stopwords))
+    )
+
+    before = len(df)
+    df = df[df[spec.cleaned_text_column].str.split().str.len() >= min_words]
+    after = len(df)
+    if after < before:
+        log.info("dropped %d short docs (< %d words)", before - after, min_words)
+
+    out = spec.processed_path(processed_dir)
+    safe_write_csv(df, out)
+    log.info("wrote %s (%d rows)", out, len(df))
+    return out
+
+
+def run_pipeline(
+    data_dir: Path,
+    processed_dir: Path,
+    *,
+    registry_path: Optional[Path] = None,
+    specs: Optional[Iterable[DatasetSpec]] = None,
+) -> List[Path]:
+    """
+    End-to-end: discover datasets, clean them, and write results.
+
+    ``specs`` lets tests inject a pre-built list; when ``None`` we read the
+    YAML registry.
+    """
+    _ensure_nltk_resources()
     custom_stopwords = build_custom_stopwords()
 
-    # Discover datasets
-    datasets = {}
-    load_datasets(data_path, ("filtered_", "clean_"), datasets)
+    dataset_specs = (
+        list(specs) if specs is not None else discover_datasets(data_dir, registry_path)
+    )
+    if not dataset_specs:
+        log.warning("no datasets matched the registry in %s", data_dir)
+        return []
 
     if not datasets:
         print(f"No datasets found in {data_path}")
@@ -258,32 +341,29 @@ def run_pipeline(data_path):
         # Save cleaned dataset
         df.to_csv(datasets[name], index=False)
         print(f"{name} cleaning complete! ({len(df)} documents retained)\n")
+        
+    log.info("preprocessing %d datasets", len(dataset_specs))
+    written: List[Path] = []
+    for spec in dataset_specs:
+        try:
+            written.append(preprocess_dataset(spec, custom_stopwords, processed_dir))
+        except Exception:
+            log.exception("preprocessing failed for %s", spec.name)
+    return written
 
 
-# =============================================================================
-# MAIN
-# =============================================================================
+def main() -> int:
+    runtime = load_runtime()
+    log.info("data preprocessing starting")
+    log.info("paths:\n%s", runtime.describe())
+
+    written = run_pipeline(runtime.data_dir, runtime.processed_data_dir)
+    if not written:
+        log.error("no datasets were processed")
+        return 1
+    log.info("preprocessing complete; wrote %d files", len(written))
+    return 0
+
 
 if __name__ == "__main__":
-    env_path = Path(__file__).resolve().parent / ".env"
-    load_dotenv(env_path)
-    data_path = os.getenv("DATA_DIR")
-
-    if not data_path:
-        print("ERROR: DATA_DIR not found in .env file")
-        exit(1)
-
-    if not os.path.exists(data_path):
-        print(f"ERROR: Data directory does not exist: {data_path}")
-        exit(1)
-
-    print("=" * 60)
-    print("Data Preprocessing Pipeline")
-    print("=" * 60)
-    print(f"Data directory: {data_path}\n")
-
-    run_pipeline(data_path)
-
-    print("=" * 60)
-    print("Preprocessing complete!")
-    print("=" * 60)
+    sys.exit(main())

@@ -16,6 +16,33 @@ The production application is deployed on HuggingFace Spaces using Streamlit, wh
 + Interactive visualizations for exploring topics, emotions, and trends within climate-related text datasets.
 + A Streamlit interface hosted on HuggingFace Spaces for applying models and visualizing results.
 
+## 🔐 Environment Variables
+
+All variables are optional for local runs — the pipeline resolves sensible
+defaults relative to the repo root. Copy `.env.example` to `.env` if you
+want to override them:
+
+```
+# Directories (all optional, defaults shown)
+DATA_DIR=./data                       # raw input CSVs (read-only)
+PROCESSED_DATA_DIR=./outputs/processed # cleaned + topic-annotated CSVs
+OUTPUT_DATA_DIR=./outputs/data         # emotion-classified CSVs
+OUTPUT_VIS_DIR=./outputs/visualizations
+MODELS_DIR=./outputs/models
+
+# Raw-ingestion scripts (only needed if you run them)
+REDDIT_RAW_DIR=
+TWITTER_RAW_DIR=
+
+# Optional
+COHERE_API_KEY=         # enables topic labels via Cohere command-r
+LOG_LEVEL=INFO          # DEBUG | INFO | WARNING | ERROR
+```
+
+Raw input data is **never overwritten** — each stage writes to its own
+output directory. See [`docs/pipeline.md`](docs/pipeline.md) for the full
+input/output contract of every stage.
+
 # ⚙️ Setup
 
 ## 1. Clone the repository
@@ -103,18 +130,27 @@ make format       # auto-format Python files
 make clean        # remove compiled Python files
 ```
 
-# 📂 Project Structure
+# Project Structure
 
 ```
 ClimateLens/
 │
 ├── src/
 │   └── climatelens/                # Core Python package
+│        ├── config/
+│           └── datasets.yaml       # Dataset registry (text/timestamp columns, profiles)
 │        ├── preprocessing/         # Data cleaning pipelines
+│           └── LDA/                # Baseline LDA topic modeling implementation
 │        ├── models/                # ML models and classifiers
 │        ├── topic_modeling/        # Topic modeling implementations
 │        ├── evaluation/            # Metrics and evaluation logic
-│        └── utils/                 # Shared helper utilities
+│        └── utils/                 # Shared pipeline utilities
+│           ├── runtime.py                # Env/path resolution, AzureML detection
+│           ├── logging_config.py         # Structured logging setup
+│           ├── datasets.py               # Registry loader
+│           ├── io_helpers.py             # Schema validation, safe CSV writes
+│           ├── twitter_chunks.py         # CLI: split Twitter CSV into chunks
+│           └── twitter_sample.py         # CLI: take a fixed-size Twitter sample
 │
 ├── docs/                           # Documentation
 ├── scripts/                        # Standalone scripts for running pipelines
@@ -129,7 +165,7 @@ ClimateLens/
 │   ├── run_scripts.sh              # Pipeline execution script
 │   └── test_run_scripts.sh         # Script for validating pipeline execution
 │
-├── tests/                          # Unit tests
+├── tests/                          # Pytest unit + smoke tests (run in CI)
 │
 ├── Makefile                        # Development automation commands
 ├── pyproject.toml                  # Python package configuration

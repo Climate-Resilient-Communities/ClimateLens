@@ -1,0 +1,42 @@
+# ClimateLens dataset registry.
+#
+# Each entry describes one input dataset the pipeline knows how to process.
+# Adding a new data source means adding an entry here - the pipeline stages
+# pick up text/timestamp columns and per-source profiles from this file
+# instead of string-sniffing filenames.
+#
+# Fields:
+#   name                 : Canonical identifier, used as the output filename.
+#   source               : "twitter" | "reddit" | ... (free-form tag).
+#   filename_patterns    : fnmatch patterns used to locate the raw CSV.
+#   text_column          : Name of the column containing the post body.
+#   timestamp_column     : Column holding the post timestamp (nullable).
+#   timestamp_unit       : "s" for unix-seconds, null for ISO strings.
+#   topic_profile        : Key into DATASET_PARAMS in topic_modeling.py.
+#   emotion_profile      : Which emotion model family to use
+#                          ("twitter" -> bert-emotion, otherwise GoEmotions).
+#   cleaned_text_column  : Column the preprocessing stage will write into.
+
+- name: climate_twitter_sample
+  source: twitter
+  filename_patterns:
+    - "*twitter*.csv"
+    - "climate_twitter*.csv"
+  text_column: text
+  timestamp_column: created_at
+  timestamp_unit: null
+  topic_profile: twitter
+  emotion_profile: twitter
+  cleaned_text_column: cleaned_text
+
+- name: anticonsumption_comments
+  source: reddit
+  filename_patterns:
+    - "filtered_anticonsumption_comments.csv"
+    - "*anticonsumption*comments*.csv"
+  text_column: body
+  timestamp_column: created_utc
+  timestamp_unit: s
+  topic_profile: default
+  emotion_profile: reddit
+  cleaned_text_column: cleaned_text
