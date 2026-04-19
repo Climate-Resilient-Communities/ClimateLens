@@ -15,10 +15,10 @@ from __future__ import annotations
 import hashlib
 from pathlib import Path
 
+import data_preprocessing as dp
 import pandas as pd
 import pytest
 
-import data_preprocessing as dp
 from utils import datasets as ds_mod
 
 

@@ -18,6 +18,7 @@ from pathlib import Path
 
 import pandas as pd
 
+
 def split_dataframe(df: pd.DataFrame, n_chunks: int):
     """Yield successive roughly-equal chunks of *df*."""
     if n_chunks <= 0:

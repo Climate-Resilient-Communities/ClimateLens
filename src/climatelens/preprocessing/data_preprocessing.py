@@ -302,7 +302,7 @@ def run_pipeline(
         print(f"No datasets found in {data_path}")
         return
 
-    print(f"\nCollected Datasets:")
+    print("\nCollected Datasets:")
     for key, value in datasets.items():
         print(f'  {key}: {value}')
 
@@ -341,7 +341,7 @@ def run_pipeline(
         # Save cleaned dataset
         df.to_csv(datasets[name], index=False)
         print(f"{name} cleaning complete! ({len(df)} documents retained)\n")
-        
+
     log.info("preprocessing %d datasets", len(dataset_specs))
     written: List[Path] = []
     for spec in dataset_specs:

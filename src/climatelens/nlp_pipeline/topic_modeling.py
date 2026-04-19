@@ -1,14 +1,14 @@
-import time, traceback
+import time
+import traceback
+import warnings
 from pathlib import Path
-import pandas as pd
 
 from bertopic import BERTopic
 from bertopic.representation import MaximalMarginalRelevance
+from hdbscan import HDBSCAN
 from sklearn.feature_extraction.text import CountVectorizer
 from umap import UMAP
-from hdbscan import HDBSCAN
 
-import warnings
 warnings.filterwarnings("ignore")
 
 # Dataset-specific configs

@@ -16,7 +16,7 @@ warnings.filterwarnings('ignore')
 """
 
 import pandas as pd
-!pip install numpy==1.23.5 gensim==4.3.3
+# !pip install numpy==1.23.5 gensim==4.3.3
 import numpy as np
 
 import re, os, sys, json, csv, copy
@@ -38,11 +38,7 @@ from sklearn.model_selection import GridSearchCV
 from sklearn.metrics.pairwise import cosine_similarity as cos_sim
 from sklearn.cluster import AgglomerativeClustering # clustering and hierarchy
 
-import gensim==4.3.3
 from gensim.utils import simple_preprocess
-from gensim.models.coherencemodel import CoherenceModel # model performance
-from gensim.matutils import jaccard
-from gensim.matutils import jensen_shannon
 
 # add scripts directory to path
 sys.path.insert(1, '../scripts/')

@@ -14,6 +14,7 @@ from pathlib import Path
 
 import pandas as pd
 
+
 def make_sample(input_path: Path, output_path: Path, n: int = 100_000) -> Path:
     df = pd.read_csv(input_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)

@@ -1,6 +1,8 @@
-import pandas as pd
-from pathlib import Path
 import re
+from pathlib import Path
+
+import pandas as pd
+
 
 def process_datasets(data_path, text_cols=('body', 'text')):
     datasets, dfs, docs_dict, failed = {}, {}, {}, []
@@ -9,7 +11,7 @@ def process_datasets(data_path, text_cols=('body', 'text')):
     for file_path in data_path.glob("*.csv"):
         name = re.sub(r"^filtered_|_clean$", "", file_path.stem)
         datasets[name] = file_path
-        
+
         try:
             try:
                 df = pd.read_csv(file_path)

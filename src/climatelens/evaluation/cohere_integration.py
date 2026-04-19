@@ -1,11 +1,9 @@
 ### this file is used within the create_submodels() function in topic_modeling.py
 
 import os
-from bertopic import BERTopic
+
 import cohere
-from bertopic.representation import Cohere
-from bertopic.representation import MaximalMarginalRelevance
-from pathlib import Path
+from bertopic.representation import Cohere, MaximalMarginalRelevance
 
 #need to do env handeling later
 
@@ -46,6 +44,6 @@ def cohere_integration():
 cohere_model = cohere_integration()
 if cohere_model:
     representation_model = [mmr_model, cohere_model]
-    print(f"Using MMR + Cohere for representation")
+    print("Using MMR + Cohere for representation")
 else:
     representation_model = mmr_model

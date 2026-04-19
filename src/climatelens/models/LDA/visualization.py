@@ -1,12 +1,29 @@
 ### Visualizations
 # !pip install pyLDAvis  (install via requirements.txt instead)
-import pyLDAvis # notebooks
-from pyLDAvis import gensim as pyldagensim # communicate with gensim
-import pyLDAvis.lda_model # communicate with sklearn
+import os
+import sys
+import time  # start, stop times
 
-import matplotlib.pyplot as plt # general plotting
-from scipy.cluster.hierarchy import linkage, dendrogram # hierarchy
-import seaborn as sns # heatmaps
+import joblib  # saving/loading models
+
+### Topic modeling, preprocessing, etc.
+import nltk
+
+# !pip install numpy==1.23.5 gensim==4.3.3
+import numpy as np
+import pandas as pd
+
+nltk.download('wordnet')
+nltk.download('stopwords')
+
+import matplotlib.pyplot as plt  # general plotting
+import pyLDAvis  # notebooks
+import pyLDAvis.lda_model  # communicate with sklearn
+import seaborn as sns  # heatmaps
+from scipy.cluster.hierarchy import dendrogram  # hierarchy
+from sklearn.cluster import AgglomerativeClustering  # clustering and hierarchy
+from sklearn.decomposition import LatentDirichletAllocation
+from sklearn.feature_extraction.text import CountVectorizer
 
 """Visualizations & Clustering"""
 
@@ -73,16 +90,19 @@ joblib.dump(best_reddit_model, redditLDA_model_path)  # saving the model
 
 reddit_coherence_score, reddit_perplexity, reddit_topic_distribution = Evaluate(best_reddit_model, processed_info, X_reddit, reddit_terms)
 
-import joblib, sys
-import sklearn
+import sys
+
+import joblib
+
 # !pip install pyLDAvis  (install via requirements.txt instead)
-import pyLDAvis # notebooks
-from pyLDAvis import gensim as pyldagensim # communicate with gensim
-import pyLDAvis.lda_model # communicate with sklearn
+import pyLDAvis  # notebooks
+import pyLDAvis.lda_model  # communicate with sklearn
+
 # add scripts directory to path
 sys.path.insert(1, '../scripts/')
 
 from google.colab import drive
+
 drive.mount('/content/drive')
 
 best_reddit_model = joblib.load('/content/drive/My Drive/Notebooks/LDA Topic Modeling/Models/LDA_reddit_model.pkl')
@@ -135,7 +155,6 @@ agg_clustering_model_twitter = hierarchy(best_twitter_model, twitter_topic_distr
 # pip install numpy==1.18.5
 # (install via requirements.txt instead)
 
-import gensim
 
 def get_jensen_shannon(components, ntopics):
     topic_dists = components
@@ -154,27 +173,11 @@ class LDAwithCustomScore(LatentDirichletAllocation):
         score = get_jensen_shannon(components, ntopics)[0]
         return score
 
-import pandas as pd
-import numpy as np
+import sys
 
-import re, os, sys, json, csv, copy
-from collections import Counter
-import joblib # saving/loading models
-import time # start, stop times
-
-from sklearn.feature_extraction.text import CountVectorizer
-from sklearn.metrics import silhouette_score
-from sklearn.decomposition import LatentDirichletAllocation
-from sklearn.metrics.pairwise import euclidean_distances
-from sklearn.model_selection import GridSearchCV
-from sklearn.metrics.pairwise import cosine_similarity as cos_sim
-from sklearn.cluster import AgglomerativeClustering # clustering and hierarchy
-
-import matplotlib.pyplot as plt # general plotting
-from scipy.cluster.hierarchy import linkage, dendrogram # hierarchy
-import seaborn as sns # heatmaps
-
+import joblib  # saving/loading models
 from google.colab import drive
+
 drive.mount('/content/drive')
 
 folder_path = '/content/drive/My Drive/KHP/Results/'
@@ -186,7 +189,7 @@ names = ['Reddit', 'Twitter']
 best_reddit_model = joblib.load('/content/drive/My Drive/Notebooks/LDA Topic Modeling/Models/LDA_reddit_model.pkl')
 best_twitter_model = joblib.load('/content/drive/My Drive/Notebooks/LDA Topic Modeling/LDA_twitter_model.pkl')
 
-from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS, CountVectorizer # refitting if needed
+from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS  # refitting if needed
 
 stopwords = list(ENGLISH_STOP_WORDS)
 custom_stopwords = []
@@ -322,6 +325,7 @@ plt.show()
 """Word Clouds for Top Words in Topics (Reddit vs Twitter)"""
 
 from wordcloud import WordCloud
+
 
 def generate_word_cloud(model, terms, top_n=10):
     top_words = [] # select the top top_n words for the word cloud

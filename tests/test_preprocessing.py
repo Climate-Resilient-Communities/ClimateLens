@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-import pytest
-
 import data_preprocessing as dp
+import pytest
 
 
 @pytest.fixture(scope="module")

@@ -1,3 +1,16 @@
+# !pip install numpy==1.23.5 gensim==4.3.3
+
+
+### Topic modeling, preprocessing, etc.
+import nltk
+import numpy as np
+
+nltk.download('wordnet')
+nltk.download('stopwords')
+
+from sklearn.decomposition import LatentDirichletAllocation
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.model_selection import GridSearchCV
 
 
 def get_jensen_shannon(components, ntopics):
@@ -28,7 +41,7 @@ class LDAwithCustomScore(LatentDirichletAllocation):
         ntopics = self.n_components
         score = get_jensen_shannon(components, ntopics)[0]
         return score
-    
+
 
 """# Topic Modeling
 
