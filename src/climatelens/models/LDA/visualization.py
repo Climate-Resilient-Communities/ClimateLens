@@ -1,12 +1,29 @@
 ### Visualizations
-!pip install pyLDAvis
-import pyLDAvis # notebooks
-from pyLDAvis import gensim as pyldagensim # communicate with gensim
-import pyLDAvis.lda_model # communicate with sklearn
+# !pip install pyLDAvis  (install via requirements.txt instead)
+import os
+import sys
+import time  # start, stop times
 
-import matplotlib.pyplot as plt # general plotting
-from scipy.cluster.hierarchy import linkage, dendrogram # hierarchy
-import seaborn as sns # heatmaps
+import joblib  # saving/loading models
+
+### Topic modeling, preprocessing, etc.
+import nltk
+
+# !pip install numpy==1.23.5 gensim==4.3.3
+import numpy as np
+import pandas as pd
+
+nltk.download('wordnet')
+nltk.download('stopwords')
+
+import matplotlib.pyplot as plt  # general plotting
+import pyLDAvis  # notebooks
+import pyLDAvis.lda_model  # communicate with sklearn
+import seaborn as sns  # heatmaps
+from scipy.cluster.hierarchy import dendrogram  # hierarchy
+from sklearn.cluster import AgglomerativeClustering  # clustering and hierarchy
+from sklearn.decomposition import LatentDirichletAllocation
+from sklearn.feature_extraction.text import CountVectorizer
 
 """Visualizations & Clustering"""
 
@@ -59,8 +76,85 @@ def hierarchy(model, topic_distribution, dataset_name, n_clusters=None, distance
     return agg_clustering
 
 
+start_time = time.time()
+best_reddit_model, processed_info, X_reddit, reddit_terms, reddit_countvec = best_model(reddit_df, ntopics_list=[5, 15, 50, 75, 100, 150])
+end_time = time.time()
+
+reddit_training_time = end_time - start_time
+
+print(f"The best Reddit LDA model has {best_reddit_model.n_components} distinct topics")
+print(f"Training time: {reddit_training_time:.4f} seconds (with GridSearch)\n")
+
+redditLDA_model_path = '/content/drive/My Drive/Notebooks/LDA Topic Modeling/LDA_reddit_model.pkl'
+joblib.dump(best_reddit_model, redditLDA_model_path)  # saving the model
+
+reddit_coherence_score, reddit_perplexity, reddit_topic_distribution = Evaluate(best_reddit_model, processed_info, X_reddit, reddit_terms)
+
+import sys
+
+import joblib
+
+# !pip install pyLDAvis  (install via requirements.txt instead)
+import pyLDAvis  # notebooks
+import pyLDAvis.lda_model  # communicate with sklearn
+
+# add scripts directory to path
+sys.path.insert(1, '../scripts/')
+
+from google.colab import drive
+
+drive.mount('/content/drive')
+
+best_reddit_model = joblib.load('/content/drive/My Drive/Notebooks/LDA Topic Modeling/Models/LDA_reddit_model.pkl')
+
+reddit_data = visualize_topics(best_reddit_model, reddit_topic_distribution, X_reddit, reddit_countvec)
+
+pyLDAvis.enable_notebook()
+pyLDAvis.display(reddit_data)
+
+reddit_vis_path = '/content/drive/My Drive/Notebooks/LDA Topic Modeling/Models/Reddit_pyLDAvis.html'
+pyLDAvis.save_html(reddit_data, reddit_vis_path)
+
+# Call the function to perform clustering and generate the dendrogram
+agg_clustering_model_reddit = hierarchy(best_reddit_model, reddit_topic_distribution, dataset_name=names[0], n_clusters=None, distance_threshold=0.0)
+#print(agg_clustering_model_reddit.labels_)
+
+"""Twitter"""
+
+start_time = time.time()
+best_twitter_model, processed_info, X_twitter, twitter_terms, twitter_countvec = best_model(twitter_df, ntopics_list=[5, 15, 50, 75, 100, 150])
+end_time = time.time()
+
+twitter_training_time = end_time - start_time
+
+print(f"The best Twitter LDA model has {best_twitter_model.n_components} distinct topics")
+print(f"Training time: {twitter_training_time:.4f} seconds (with GridSearch)\n")
+
+twitterLDA_model_path = '/content/drive/My Drive/Notebooks/LDA Topic Modeling/LDA_twitter_model.pkl'
+joblib.dump(best_twitter_model, twitterLDA_model_path) # saving the model
+
+# Call Evaluate with the necessary arguments
+twitter_coherence_score, twitter_perplexity, twitter_topic_distribution = Evaluate(best_twitter_model, processed_info, X_twitter, twitter_terms)
+
+best_twitter_model = joblib.load('/content/drive/My Drive/Notebooks/LDA Topic Modeling/LDA_twitter_model.pkl')
+
+twitter_data = visualize_topics(best_twitter_model, twitter_topic_distribution, X_twitter, twitter_countvec)
+
+pyLDAvis.enable_notebook()
+pyLDAvis.display(twitter_data)
+
+twitter_vis_path = '/content/drive/My Drive/Notebooks/LDA Topic Modeling/Models/Twitter_pyLDAvis.html'
+pyLDAvis.save_html(twitter_data, twitter_vis_path)
+
+agg_clustering_model_twitter = hierarchy(best_twitter_model, twitter_topic_distribution, dataset_name=names[1], n_clusters=None, distance_threshold=0.0)
+#print(agg_clustering_model_twitter.labels_)
 
 """# Visualizations"""
+
+# pip install gensim
+# pip install numpy==1.18.5
+# (install via requirements.txt instead)
+
 
 def get_jensen_shannon(components, ntopics):
     topic_dists = components
@@ -79,27 +173,11 @@ class LDAwithCustomScore(LatentDirichletAllocation):
         score = get_jensen_shannon(components, ntopics)[0]
         return score
 
-import pandas as pd
-import numpy as np
+import sys
 
-import re, os, sys, json, csv, copy
-from collections import Counter
-import joblib # saving/loading models
-import time # start, stop times
-
-from sklearn.feature_extraction.text import CountVectorizer
-from sklearn.metrics import silhouette_score
-from sklearn.decomposition import LatentDirichletAllocation
-from sklearn.metrics.pairwise import euclidean_distances
-from sklearn.model_selection import GridSearchCV
-from sklearn.metrics.pairwise import cosine_similarity as cos_sim
-from sklearn.cluster import AgglomerativeClustering # clustering and hierarchy
-
-import matplotlib.pyplot as plt # general plotting
-from scipy.cluster.hierarchy import linkage, dendrogram # hierarchy
-import seaborn as sns # heatmaps
-
+import joblib  # saving/loading models
 from google.colab import drive
+
 drive.mount('/content/drive')
 
 folder_path = '/content/drive/My Drive/KHP/Results/'
@@ -111,7 +189,7 @@ names = ['Reddit', 'Twitter']
 best_reddit_model = joblib.load('/content/drive/My Drive/Notebooks/LDA Topic Modeling/Models/LDA_reddit_model.pkl')
 best_twitter_model = joblib.load('/content/drive/My Drive/Notebooks/LDA Topic Modeling/LDA_twitter_model.pkl')
 
-from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS, CountVectorizer # refitting if needed
+from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS  # refitting if needed
 
 stopwords = list(ENGLISH_STOP_WORDS)
 custom_stopwords = []
@@ -247,6 +325,7 @@ plt.show()
 """Word Clouds for Top Words in Topics (Reddit vs Twitter)"""
 
 from wordcloud import WordCloud
+
 
 def generate_word_cloud(model, terms, top_n=10):
     top_words = [] # select the top top_n words for the word cloud

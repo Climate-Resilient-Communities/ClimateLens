@@ -2,20 +2,39 @@ import csv
 import json
 import os
 from pathlib import Path
+
 from dotenv import load_dotenv
 
 search_terms = [
-  "climate change", "global warming",
-  "eco-anxiety", "climate anxiety", "eco-distress",
-  "eco-depression", "climate depression", "climate distress",
-  "climate worry", "climate fear", "climate doom",
-  "eco-grief", "ecological grief", "climate grief", "solastalgia",
-  "environmental melancholia",
-  "eco-anger", "eco-frustration", "eco-guilt",
-  "collective guilt", "powerlessness", "helplessness",
-  "despair", "eco-paralysis", "ecophobia",
-  "post-traumatic stress", "PTSD"
+    "climate change",
+    "global warming",
+    "eco-anxiety",
+    "climate anxiety",
+    "eco-distress",
+    "eco-depression",
+    "climate depression",
+    "climate distress",
+    "climate worry",
+    "climate fear",
+    "climate doom",
+    "eco-grief",
+    "ecological grief",
+    "climate grief",
+    "solastalgia",
+    "environmental melancholia",
+    "eco-anger",
+    "eco-frustration",
+    "eco-guilt",
+    "collective guilt",
+    "powerlessness",
+    "helplessness",
+    "despair",
+    "eco-paralysis",
+    "ecophobia",
+    "post-traumatic stress",
+    "PTSD",
 ]
+
 
 def contains_keywords(text, keywords):
     """Checks if any keyword appears in the given text."""
@@ -24,29 +43,32 @@ def contains_keywords(text, keywords):
     lower = text.lower()
     return any(term in lower for term in keywords)
 
+
 def load_environment():
-  try:
-    import google.colab
-    from google.colab import drive
-    drive.mount("/content/drive")
+    try:
+        import google.colab  # noqa: F401
+        from google.colab import drive
 
-    base_path = "..."
-    env_path = Path(base_path) / ".env"
-  except ImportError:
-    env_path = Path(__file__).resolve().parent / ".env"
+        drive.mount("/content/drive")
 
-  if env_path.exists():
-    load_dotenv(env_path)
-    print("Loading environment variables")
-    data_dir, reddit_raw_dir = os.getenv("DATA_DIR"), os.getenv("REDDIT_RAW_DIR")
-  else:
-    raise FileNotFoundError(f".env file not found at {env_path}")
+        base_path = "..."
+        env_path = Path(base_path) / ".env"
+    except ImportError:
+        env_path = Path(__file__).resolve().parent / ".env"
 
-  return data_dir, reddit_raw_dir
+    if env_path.exists():
+        load_dotenv(env_path)
+        print("Loading environment variables")
+        data_dir, reddit_raw_dir = os.getenv("DATA_DIR"), os.getenv("REDDIT_RAW_DIR")
+    else:
+        raise FileNotFoundError(f".env file not found at {env_path}")
+
+    return data_dir, reddit_raw_dir
+
 
 data_dir, reddit_raw_dir = load_environment()
 if not data_dir or not reddit_raw_dir:
-    raise EnvironmentError("DATA_DIR and CODE_DIR must be set in the .env file.")
+    raise EnvironmentError("DATA_DIR and REDDIT_RAW_DIR must be set in the .env file.")
 
 ### Batch process folder of JSONL files
 input_folder = Path(reddit_raw_dir)
@@ -68,7 +90,7 @@ for file in os.listdir(input_folder):
             try:
                 first_valid_line = json.loads(line)
                 break
-            except:
+            except json.JSONDecodeError:
                 continue
 
     if not first_valid_line:
@@ -86,7 +108,7 @@ for file in os.listdir(input_folder):
     print(f"Processing {file} → {output_path.name}")
 
     match_count = 0
-    with open(output_path, "w", newline='', encoding='utf-8') as csv_out:
+    with open(output_path, "w", newline="", encoding="utf-8") as csv_out:
         writer = csv.DictWriter(csv_out, fieldnames=["subreddit", "body", "created_utc"])
         writer.writeheader()
 
@@ -94,13 +116,19 @@ for file in os.listdir(input_folder):
             for line in f:
                 try:
                     entry = json.loads(line)
-                    text = entry.get("body") if is_comment else entry.get("selftext") or entry.get("title")
+                    text = (
+                        entry.get("body")
+                        if is_comment
+                        else entry.get("selftext") or entry.get("title")
+                    )
                     if contains_keywords(text, search_terms):
-                        writer.writerow({
-                            "subreddit": entry.get("subreddit"),
-                            "body": text,
-                            "created_utc": entry.get("created_utc")
-                        })
+                        writer.writerow(
+                            {
+                                "subreddit": entry.get("subreddit"),
+                                "body": text,
+                                "created_utc": entry.get("created_utc"),
+                            }
+                        )
                         match_count += 1
                 except json.JSONDecodeError:
                     continue

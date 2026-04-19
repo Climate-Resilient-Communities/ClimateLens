@@ -1,7 +1,8 @@
-from azure.ai.ml import MLClient, command
-from azure.identity import DefaultAzureCredential
-from azure.ai.ml.entities import Environment
 from datetime import datetime
+
+from azure.ai.ml import MLClient, command
+from azure.ai.ml.entities import Environment
+from azure.identity import DefaultAzureCredential
 
 ml = MLClient.from_config(credential=DefaultAzureCredential())
 

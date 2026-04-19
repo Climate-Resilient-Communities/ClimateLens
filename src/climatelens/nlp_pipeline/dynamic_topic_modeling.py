@@ -70,7 +70,7 @@ def prepare_timestamps(dfs, name):
 
         # Check if time span is meaningful for DTM
         if time_span_days < 7:
-            print(f"Time span less than 1 week. DTM may not be meaningful.")
+            print("Time span less than 1 week. DTM may not be meaningful.")
 
         return timestamps
 

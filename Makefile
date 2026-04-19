@@ -1,4 +1,8 @@
-PROJECT_NAME = climate-lens
+#################################################################################
+# GLOBALS                                                                       #
+#################################################################################
+
+PROJECT_NAME = climatelens
 PYTHON_VERSION = 3.10
 PYTHON_INTERPRETER = python
 
@@ -44,8 +48,53 @@ test:
 clean:
 	find . -type f -name "*.py[co]" -delete
 	find . -type d -name "__pycache__" -delete
-	rm -rf .pytest_cache
-	rm -rf .ruff_cache
+
+## Lint using ruff (lint + format check)
+.PHONY: lint
+lint:
+	ruff check src tests
+	ruff format --check src tests
+
+## Auto-format source code with ruff
+.PHONY: format
+format:
+	ruff check --fix src tests
+	ruff format src tests
+
+## Run the test suite
+.PHONY: test
+test:
+	pytest tests/ -v
+
+## Run the full pipeline locally (preprocessing -> topic modeling -> emotion)
+.PHONY: pipeline
+pipeline:
+	$(PYTHON_INTERPRETER) src/data_preprocessing.py
+	$(PYTHON_INTERPRETER) src/topic_modeling.py
+	$(PYTHON_INTERPRETER) src/emotion_classification.py
+	$(PYTHON_INTERPRETER) src/emotion_visualizations.py
+
+## Set up python interpreter environment
+.PHONY: create_environment
+create_environment:
+	
+	conda create --name $(PROJECT_NAME) python=$(PYTHON_VERSION) -y
+	
+	@echo ">>> conda env created. Activate with:\nconda activate $(PROJECT_NAME)"
+
+
+#################################################################################
+# PROJECT RULES                                                                 #
+#################################################################################
+
+## Project Setup Guidelines
+# The setup guide for cloning the repo, setting up the environment, and installing dependencies is detailed in the `README.md`.
+# Please refer to the `README.md` file for instructions on setting up the project locally.
+
+
+#################################################################################
+# Self Documenting Commands                                                     #
+#################################################################################
 
 .DEFAULT_GOAL := help
 

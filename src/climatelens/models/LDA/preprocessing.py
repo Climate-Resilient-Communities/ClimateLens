@@ -1,11 +1,22 @@
-!pip install gensim==4.3.3
+# !pip install gensim==4.3.3
 
 import nltk
+
 nltk.download('wordnet')
 nltk.download('stopwords')
-from nltk.stem import WordNetLemmatizer # lemmatization function
 
+
+### Topic modeling, preprocessing, etc.
+import nltk
+
+# !pip install numpy==1.23.5 gensim==4.3.3
+from nltk.stem import WordNetLemmatizer  # lemmatization function
 from sklearn.feature_extraction.text import ENGLISH_STOP_WORDS
+
+nltk.download('wordnet')
+nltk.download('stopwords')
+
+
 
 # checks if strings (s) contain only English characters
 def isEnglish(s):

@@ -1,11 +1,14 @@
-import os, re
+import os
+import re
 import time
 import traceback
-from pathlib import Path
 from datetime import datetime
+from itertools import product
+from pathlib import Path
+
 import pandas as pd
 from dotenv import load_dotenv
-from itertools import product
+
 
 def load_environment():
     try:
@@ -42,16 +45,12 @@ def load_docs(data_dir, text_cols=("body", "text")):
     return docs
 docs_dict = load_docs(DATA_DIR)
 
-print("Installing dependencies...")
-!pip install -qq bertopic sentence-transformers umap-learn hdbscan # change to -vv for debugging!!
-print("Dependencies installed.")
-
 from bertopic import BERTopic
 from bertopic.representation import MaximalMarginalRelevance
-from sklearn.feature_extraction.text import CountVectorizer
-from sentence_transformers import SentenceTransformer
-from umap import UMAP
 from hdbscan import HDBSCAN
+from sentence_transformers import SentenceTransformer
+from sklearn.feature_extraction.text import CountVectorizer
+from umap import UMAP
 
 EMBEDDING_MODELS = {
     "minilm-L6": "sentence-transformers/all-MiniLM-L6-v2", #fastest

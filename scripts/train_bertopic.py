@@ -1,17 +1,24 @@
 import traceback
-from climatelens.utils.load_env import load_environment
-data_dir, code_dir, JUPYTER = load_environment()
-from climatelens.utils import process_datasets, create_directories
 
+from climatelens.utils.load_env import load_environment
+
+data_dir, code_dir, JUPYTER = load_environment()
 from climatelens.nlp_pipeline import topic_modeling as tm
+from climatelens.utils import create_directories, process_datasets
+
 parameters = tm.DATASET_PARAMS
 bert_model = tm.bert_model
 save_dataframe = tm.save_dataframe_inplace
 save_model = tm.save_and_reload_model
 
-from climatelens.nlp_pipeline.postprocessing import annotate_data, process_topic_merges, update_model
-from climatelens.nlp_pipeline.embeddings import compute_embeddings
 from climatelens.nlp_pipeline.dynamic_topic_modeling import run_dynamic_topic_modeling
+from climatelens.nlp_pipeline.embeddings import compute_embeddings
+from climatelens.nlp_pipeline.postprocessing import (
+    annotate_data,
+    process_topic_merges,
+    update_model,
+)
+
 
 def main():
     dfs, docs_dict, datasets = process_datasets(data_dir)

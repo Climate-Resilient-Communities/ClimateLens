@@ -1,7 +1,8 @@
-import os
-import json
 import csv
+import json
+import os
 from datetime import datetime
+
 
 def analyze_jsonl_file(filepath):
     row_count = 0
@@ -80,7 +81,7 @@ def analyze_csv_file(filepath):
             max_chars = max(max_chars, char_len)
 
     avg_row_size = file_size / row_count if row_count else 0
-    
+
     valid_posts = row_count - empty_posts
     avg_chars = total_chars / valid_posts if valid_posts else 0
     avg_words = total_words / valid_posts if valid_posts else 0

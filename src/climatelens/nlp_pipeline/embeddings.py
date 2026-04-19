@@ -1,5 +1,6 @@
 from sentence_transformers import SentenceTransformer
 
+
 def compute_embeddings(docs_dict):
     DEFAULT_EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L12-v2"
     TWITTER_EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L12-v2"

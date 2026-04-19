@@ -1,22 +1,45 @@
-# Secrets & Environment Variables
-.env*
-*.pem
-*.key
-*.p12
-*.pfx
+# Secrets
+.env
+.env.*
+!.env.example
 
-# Dependencies/Logs
+# Python
 __pycache__/
 *.pyc
 *.pyo
-*.log
+*.pyd
+*.egg-info/
+.eggs/
+build/
+dist/
 
-# IDE/Editor
-.vscode/settings.json
+# Virtualenvs
+.venv/
+venv/
+env/
+
+# Tooling caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Pipeline artifacts
+outputs/
+code/models/
+code/visualizations/
+*.safetensors
+
+# HuggingFace / torch caches
+.cache/
+hf_cache/
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
 .idea/
 *.swp
 *.swo
-
-# Cache directories
-.cache/
-.pytest_cache/
