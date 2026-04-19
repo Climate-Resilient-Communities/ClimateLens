@@ -274,7 +274,6 @@ def preprocess_dataset(
     log.info("wrote %s (%d rows)", out, len(df))
     return out
 
-
 def run_pipeline(
     data_dir: Path,
     processed_dir: Path,

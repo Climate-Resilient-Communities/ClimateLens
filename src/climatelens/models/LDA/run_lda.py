@@ -8,6 +8,7 @@ NOT production, only used for:
 """
 
 import warnings
+
 warnings.filterwarnings('ignore')
 
 
@@ -15,35 +16,28 @@ warnings.filterwarnings('ignore')
 # Preprocessing
 """
 
-import pandas as pd
-# !pip install numpy==1.23.5 gensim==4.3.3
-import numpy as np
+import os
+import sys
+import time  # start, stop times
 
-import re, os, sys, json, csv, copy
-from collections import Counter
-import joblib # saving/loading models
-import time # start, stop times
+import joblib  # saving/loading models
 
 ### Topic modeling, preprocessing, etc.
 import nltk
+
+# !pip install numpy==1.23.5 gensim==4.3.3
+import pandas as pd
+
 nltk.download('wordnet')
 nltk.download('stopwords')
-from nltk.stem import WordNetLemmatizer # lemmatization function
 
-from sklearn.feature_extraction.text import CountVectorizer
-from sklearn.metrics import silhouette_score
-from sklearn.decomposition import LatentDirichletAllocation
-from sklearn.metrics.pairwise import euclidean_distances
-from sklearn.model_selection import GridSearchCV
-from sklearn.metrics.pairwise import cosine_similarity as cos_sim
-from sklearn.cluster import AgglomerativeClustering # clustering and hierarchy
 
-from gensim.utils import simple_preprocess
 
 # add scripts directory to path
 sys.path.insert(1, '../scripts/')
 
 from google.colab import drive
+
 drive.mount('/content/drive')
 
 folder_path = '/content/drive/My Drive/KHP/Results/'
@@ -78,17 +72,14 @@ joblib.dump(best_reddit_model, redditLDA_model_path)  # saving the model
 
 reddit_coherence_score, reddit_perplexity, reddit_topic_distribution = Evaluate(best_reddit_model, processed_info, X_reddit, reddit_terms)
 
-import joblib, sys
-import sklearn
-!pip install pyLDAvis
-import pyLDAvis # notebooks
-from pyLDAvis import gensim as pyldagensim # communicate with gensim
-import pyLDAvis.lda_model # communicate with sklearn
+import sys
+
+import joblib
+import pyLDAvis  # notebooks
+import pyLDAvis.lda_model  # communicate with sklearn
+
 # add scripts directory to path
 sys.path.insert(1, '../scripts/')
-
-from google.colab import drive
-drive.mount('/content/drive')
 
 best_reddit_model = joblib.load('/content/drive/My Drive/Notebooks/LDA Topic Modeling/Models/LDA_reddit_model.pkl')
 
