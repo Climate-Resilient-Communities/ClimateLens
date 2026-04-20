@@ -20,8 +20,8 @@ DATASET_PARAMS = {
         "min_cluster_size": 5,
         "min_samples": 5,
         "min_topic_size": 5,
-        "nr_topics": "auto"
-    }, # more aggressive clustering for shorter texts.
+        "nr_topics": "auto",
+    },  # more aggressive clustering for shorter texts.
     "reddit": {
         "min_df": 0.05,
         "max_df": 0.90,
@@ -29,7 +29,7 @@ DATASET_PARAMS = {
         "min_cluster_size": 70,
         "min_samples": 10,
         "min_topic_size": 100,
-        "nr_topics": "auto"
+        "nr_topics": "auto",
     },
     "reddit_small": {
         "min_df": 0.01,
@@ -38,9 +38,10 @@ DATASET_PARAMS = {
         "min_cluster_size": 3,
         "min_samples": 3,
         "min_topic_size": 15,
-        "nr_topics": "auto"
-    } # fallback for visualization error (less than 4 topics)
+        "nr_topics": "auto",
+    },  # fallback for visualization error (less than 4 topics)
 }
+
 
 def create_submodels(params=None):
     params = params or {
@@ -53,36 +54,48 @@ def create_submodels(params=None):
 
     # Twitter-specific stopwords to filter artifacts that slip through preprocessing
     twitter_stopwords = [
-        'https', 'http', 'co', 'rt', 'amp', 't', 'www', 'url', 'pic',
-        'twitter', 'com', 'ru', 'tldrs'
-        ] # do we really need this? we can take these out much earlier
+        "https",
+        "http",
+        "co",
+        "rt",
+        "amp",
+        "t",
+        "www",
+        "url",
+        "pic",
+        "twitter",
+        "com",
+        "ru",
+        "tldrs",
+    ]  # do we really need this? we can take these out much earlier
 
     vectorizer_model = CountVectorizer(
         ngram_range=(1, 2),
         min_df=params["min_df"],
         max_df=params["max_df"],
-        stop_words=twitter_stopwords  # Fallback to catch any Twitter artifacts
-    ) # look into removing the stopwords
+        stop_words=twitter_stopwords,  # Fallback to catch any Twitter artifacts
+    )  # look into removing the stopwords
 
     umap_model = UMAP(
         n_neighbors=params["n_neighbors"],
         n_components=5,
-        metric='cosine',
+        metric="cosine",
         low_memory=False,
-        random_state=42
+        random_state=42,
     )
 
     hdbscan_model = HDBSCAN(
         min_cluster_size=params["min_cluster_size"],
         min_samples=params["min_samples"],
-        metric='euclidean',
-        prediction_data=True #need to check this param
+        metric="euclidean",
+        prediction_data=True,  # need to check this param
     )
 
     mmr_model = MaximalMarginalRelevance(diversity=0.3)
     representation_model = mmr_model
 
     return vectorizer_model, umap_model, hdbscan_model, representation_model
+
 
 def bert_model(dataset_name, docs, embeddings, embedding_model, params=None):
     if not docs:
@@ -101,7 +114,7 @@ def bert_model(dataset_name, docs, embeddings, embedding_model, params=None):
         vectorizer_model=vectorizer_model,
         representation_model=representation_model,
         min_topic_size=params.get("min_topic_size", 7),
-        nr_topics=params["nr_topics"], # dealing with the ValueError: zero-size array
+        nr_topics=params["nr_topics"],  # dealing with the ValueError: zero-size array
     )
 
     start_time = time.time()
@@ -121,10 +134,12 @@ def bert_model(dataset_name, docs, embeddings, embedding_model, params=None):
         elapsed_seconds = end_time - start_time
         print(f"{dataset_name} topic modeling completed in {elapsed_seconds:.3f} seconds")
 
+
 def save_and_reload_model(name, model_dir, topic_models):
     save_path = Path(model_dir) / f"{name}.safetensors"
     topic_models[name].save(str(save_path), serialization="safetensors")
     print(f"Model saved: {save_path}")
+
 
 def save_dataframe_inplace(path, df):
     try:

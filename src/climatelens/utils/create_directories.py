@@ -4,7 +4,7 @@ from zoneinfo import ZoneInfo
 
 
 def create_directories(code_dir):
-    current_time = datetime.now(ZoneInfo("America/New_York")).strftime('%m %d - %H %M Hours')
+    current_time = datetime.now(ZoneInfo("America/New_York")).strftime("%m %d - %H %M Hours")
     print(f"Current time: {current_time}")
 
     outputs_dir = Path(code_dir) / "outputs"

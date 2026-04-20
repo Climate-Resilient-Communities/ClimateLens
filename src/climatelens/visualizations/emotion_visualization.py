@@ -255,6 +255,7 @@ def load_datasets(file_paths: Dict[str, Path]) -> Dict[str, pd.DataFrame]:
 # EMOTION DETECTION
 # =============================================================================
 
+
 def load_emotion_model():
     """
     Load the HuggingFace emotion detection model.
@@ -787,6 +788,7 @@ def create_summary_report(datasets: Dict[str, pd.DataFrame], output_dir: Path) -
 
     return str(filepath)
 
+
 # =============================================================================
 # MAIN PIPELINE
 # =============================================================================
@@ -880,6 +882,7 @@ def run_pipeline() -> None:
     print(f"  Time-Series: {len(all_timeseries_files)} HTML files")
     print("  Summary Report: 1 HTML file")
     print(f"\nTotal files generated: {len(all_wordcloud_files) + len(all_timeseries_files) + 1}")
+
 
 if __name__ == "__main__":
     run_pipeline()

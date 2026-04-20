@@ -1,4 +1,10 @@
 # Original Author: Ardavan Shahrabi
+import time
+import traceback
+from pathlib import Path
+
+import pandas as pd
+
 
 def prepare_timestamps(dfs, name):
     """
@@ -19,7 +25,7 @@ def prepare_timestamps(dfs, name):
     timestamps = None
 
     # Possible timestamp column names (prioritized)
-    timestamp_cols = ['created_utc', 'created_at', 'timestamp', 'date', 'datetime']
+    timestamp_cols = ["created_utc", "created_at", "timestamp", "date", "datetime"]
 
     found_col = None
     for col in timestamp_cols:
@@ -36,15 +42,15 @@ def prepare_timestamps(dfs, name):
     print(f" Found timestamp column '{found_col}' for {name}")
 
     try:
-        if found_col == 'created_utc':
+        if found_col == "created_utc":
             # Reddit uses Unix timestamps (seconds since epoch)
-            timestamps = pd.to_datetime(df[found_col], unit='s', errors='coerce')
-        elif found_col == 'created_at':
+            timestamps = pd.to_datetime(df[found_col], unit="s", errors="coerce")
+        elif found_col == "created_at":
             # Twitter uses datetime strings
-            timestamps = pd.to_datetime(df[found_col], errors='coerce')
+            timestamps = pd.to_datetime(df[found_col], errors="coerce")
         else:
             # Try automatic parsing for other column names
-            timestamps = pd.to_datetime(df[found_col], errors='coerce')
+            timestamps = pd.to_datetime(df[found_col], errors="coerce")
 
         # Convert to Python datetime objects (list)
         timestamps = timestamps.tolist()
@@ -66,7 +72,7 @@ def prepare_timestamps(dfs, name):
         time_span_days = (max_date - min_date).days
 
         print(f"Time range: {min_date.strftime('%Y-%m-%d')} to {max_date.strftime('%Y-%m-%d')}")
-        print(f"Time span: {time_span_days} days (~{time_span_days/365:.1f} years)")
+        print(f"Time span: {time_span_days} days (~{time_span_days / 365:.1f} years)")
 
         # Check if time span is meaningful for DTM
         if time_span_days < 7:
@@ -78,6 +84,7 @@ def prepare_timestamps(dfs, name):
         print(f"Error parsing timestamps for {name}: {e}")
         traceback.print_exc()
         return None
+
 
 def calculate_optimal_bins(timestamps, min_bins=10, max_bins=50):
     """
@@ -110,7 +117,10 @@ def calculate_optimal_bins(timestamps, min_bins=10, max_bins=50):
 
     return optimal_bins
 
-def perform_dynamic_topic_modeling(topic_model, docs, timestamps, name, nr_bins=None, top_n_topics=10):
+
+def perform_dynamic_topic_modeling(
+    topic_model, docs, timestamps, name, nr_bins=None, top_n_topics=10
+):
     """
     Perform Dynamic Topic Modeling analysis using BERTopic's topics_over_time.
 
@@ -145,7 +155,7 @@ def perform_dynamic_topic_modeling(topic_model, docs, timestamps, name, nr_bins=
             nr_bins=nr_bins,
             datetime_format=None,  # Auto-detect format
             evolution_tuning=True,  # Fine-tune topic representations per time bin
-            global_tuning=True      # Use global topic representations as reference
+            global_tuning=True,  # Use global topic representations as reference
         )
 
         # Generate interactive visualization
@@ -153,7 +163,7 @@ def perform_dynamic_topic_modeling(topic_model, docs, timestamps, name, nr_bins=
             topics_over_time=topics_over_time,
             top_n_topics=top_n_topics,
             normalize_frequency=False,
-            title=f"Topic Evolution Over Time - {name}"
+            title=f"Topic Evolution Over Time - {name}",
         )
 
         elapsed_time = time.time() - start_time
@@ -166,6 +176,7 @@ def perform_dynamic_topic_modeling(topic_model, docs, timestamps, name, nr_bins=
         print(f"Error during DTM for {name}: {e}")
         traceback.print_exc()
         return None, None
+
 
 def save_dtm_outputs(topics_over_time, fig, name, dtm_dir):
     """
@@ -196,6 +207,7 @@ def save_dtm_outputs(topics_over_time, fig, name, dtm_dir):
         print(f"Error saving DTM outputs for {name}: {e}")
         traceback.print_exc()
 
+
 def run_dynamic_topic_modeling(dfs, topic_models, docs_dict, dtm_dir):
     print("\n" + "=" * 60)
     print("Starting Dynamic Topic Modeling:\n")
@@ -213,7 +225,7 @@ def run_dynamic_topic_modeling(dfs, topic_models, docs_dict, dtm_dir):
             continue
 
         try:
-            #Use existing trained model
+            # Use existing trained model
             model = topic_models.get(name)
             if model is None:
                 print(f"Skipping DTM for {name} (no trained model)")
@@ -225,7 +237,7 @@ def run_dynamic_topic_modeling(dfs, topic_models, docs_dict, dtm_dir):
                 timestamps=timestamps,
                 name=name,
                 nr_bins=None,
-                top_n_topics=10
+                top_n_topics=10,
             )
 
             # Save outputs

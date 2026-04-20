@@ -19,6 +19,7 @@ def load_environment():
 
     return data_dir
 
+
 data_dir = load_environment()
 if not data_dir:
     raise EnvironmentError("DATA_DIR must be set in the .env file.")
@@ -46,10 +47,9 @@ for csv_path in data_dir.glob("*.csv"):
 
     before = len(df)
 
-    df = df[
-        df[text_col].notna()
-        & df[text_col].astype(str).str.strip().ne("")
-    ].reset_index(drop=True)
+    df = df[df[text_col].notna() & df[text_col].astype(str).str.strip().ne("")].reset_index(
+        drop=True
+    )
 
     after = len(df)
     print(f"Removed {before - after} rows")

@@ -4,7 +4,7 @@ from pathlib import Path
 import pandas as pd
 
 
-def process_datasets(data_path, text_cols=('body', 'text')):
+def process_datasets(data_path, text_cols=("body", "text")):
     datasets, dfs, docs_dict, failed = {}, {}, {}, []
     data_path = Path(data_path)
 
@@ -20,7 +20,7 @@ def process_datasets(data_path, text_cols=('body', 'text')):
                 df = pd.read_csv(
                     file_path,
                     engine="python",
-                    on_bad_lines="skip" # maybe experiment with "warn"
+                    on_bad_lines="skip",  # maybe experiment with "warn"
                 )
 
             text_col = next((c for c in text_cols if c in df.columns), None)

@@ -7,16 +7,26 @@ def annotate_data(dfs, name, JUPYTER, topics_dict, probs_dict, topic_info_dict):
 
     if JUPYTER:
         from IPython.display import display
+
         print("Processed data (sample):\n")
         display(dfs[name].sample(n=min(3, len(dfs[name]))))
 
         print(f"\nNumber of topics (including outlier): {len(topic_info_dict[name])}\n")
         display(topic_info_dict[name].sample(n=min(4, len(topic_info_dict[name]))))
 
-def process_topic_merges(dfs, topic_info_dict, name, topic_col="topic", repr_docs_col="Representative_Docs"):
+
+def process_topic_merges(
+    dfs, topic_info_dict, name, topic_col="topic", repr_docs_col="Representative_Docs"
+):
     # Drop any existing merge columns to avoid duplicates
-    cols_to_drop = [c for c in dfs[name].columns if c.endswith('_x') or c.endswith('_y') or c in ['Name', 'Representation', 'Representative_Docs']]
-    dfs[name] = dfs[name].drop(columns=cols_to_drop, errors='ignore')
+    cols_to_drop = [
+        c
+        for c in dfs[name].columns
+        if c.endswith("_x")
+        or c.endswith("_y")
+        or c in ["Name", "Representation", "Representative_Docs"]
+    ]
+    dfs[name] = dfs[name].drop(columns=cols_to_drop, errors="ignore")
     df = dfs[name].merge(
         topic_info_dict[name][["Topic", "Name", "Representation", repr_docs_col]],
         left_on=topic_col,
@@ -24,16 +34,20 @@ def process_topic_merges(dfs, topic_info_dict, name, topic_col="topic", repr_doc
         how="left",
     )
     if "Topic" in df.columns:
-      del df["Topic"]
+        del df["Topic"]
 
     is_repr_col = f"is_representative{'_core' if 'core' in topic_col else ''}"
     df[is_repr_col] = df.apply(
-        lambda row: 1
-        if isinstance(row.get(repr_docs_col), list) and row.get("cleaned_text") in row.get(repr_docs_col)
-        else 0,
+        lambda row: (
+            1
+            if isinstance(row.get(repr_docs_col), list)
+            and row.get("cleaned_text") in row.get(repr_docs_col)
+            else 0
+        ),
         axis=1,
     )
     return df
+
 
 def process_core_topics(dfs, name, core_topics, topics_dict, probs_dict):
     dfs[name]["core_topic"] = topics_dict[name]
@@ -55,17 +69,33 @@ def process_core_topics(dfs, name, core_topics, topics_dict, probs_dict):
     )
 
     dfs[name]["is_representative_core"] = dfs[name].apply(
-        lambda row: 1
-        if isinstance(row.get("Representative_Docs_core"), list)
-        and row.get("cleaned_text") in row.get("Representative_Docs_core")
-        else 0,
+        lambda row: (
+            1
+            if isinstance(row.get("Representative_Docs_core"), list)
+            and row.get("cleaned_text") in row.get("Representative_Docs_core")
+            else 0
+        ),
         axis=1,
     )
 
     return core_topics
 
-def update_model(name, dfs, docs, topic_models, docs_dict, dirs, core_topics_dict, topics_dict, probs_dict, nr_topics=30):
-    model_dir, IDM_dir, hierarchy_dir, barchart_dir, dtm_dir = dirs  # Updated to include dtm_dir ????????????
+
+def update_model(
+    name,
+    dfs,
+    docs,
+    topic_models,
+    docs_dict,
+    dirs,
+    core_topics_dict,
+    topics_dict,
+    probs_dict,
+    nr_topics=30,
+):
+    model_dir, IDM_dir, hierarchy_dir, barchart_dir, dtm_dir = (
+        dirs  # Updated to include dtm_dir ????????????
+    )
     topic_model = topic_models[name]
 
     topic_model_clustered = topic_model.reduce_topics(docs_dict[name], nr_topics=nr_topics)
@@ -77,7 +107,9 @@ def update_model(name, dfs, docs, topic_models, docs_dict, dirs, core_topics_dic
 
     figure_hierarchy = topic_model_clustered.visualize_hierarchy()
     figure_topics = topic_model_clustered.visualize_topics()
-    figure_barchart = topic_model_clustered.visualize_barchart(top_n_topics=len(core_topics), n_words=10)
+    figure_barchart = topic_model_clustered.visualize_barchart(
+        top_n_topics=len(core_topics), n_words=10
+    )
 
     # resizing figures to be larger
     WIDTH = 1800

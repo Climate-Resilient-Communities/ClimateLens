@@ -22,6 +22,7 @@ def make_sample(input_path: Path, output_path: Path, n: int = 100_000) -> Path:
     print(f"Sample dataset created: {output_path} ({min(n, len(df))} rows)")
     return output_path
 
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--input", required=True, type=Path)

@@ -5,9 +5,10 @@ import os
 import cohere
 from bertopic.representation import Cohere, MaximalMarginalRelevance
 
-#need to do env handeling later
+# need to do env handeling later
 
 mmr_model = MaximalMarginalRelevance(diversity=0.3)
+
 
 def cohere_integration():
     cohere_api_key = os.getenv("COHERE_API_KEY")
@@ -35,11 +36,12 @@ def cohere_integration():
             prompt=custom_prompt,
             nr_docs=4,
             diversity=0.1,
-            delay_in_seconds=2
+            delay_in_seconds=2,
         )
     except Exception as e:
         print(f"Error initializing Cohere integration: {e}")
         return None
+
 
 cohere_model = cohere_integration()
 if cohere_model:

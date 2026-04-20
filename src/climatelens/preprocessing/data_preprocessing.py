@@ -12,10 +12,16 @@ Usage::
 
 from __future__ import annotations
 
+import os
 import re
 import sys
 from pathlib import Path
 from typing import Iterable, List, Optional
+
+from dotenv import load_dotenv
+
+load_dotenv()
+data_path = os.getenv("DATA_DIR")
 
 import nltk
 import pandas as pd
@@ -28,7 +34,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from utils.datasets import DatasetSpec, discover_datasets  # noqa: E402
 from utils.io_helpers import drop_missing_text, safe_write_csv  # noqa: E402
 from utils.logging_config import get_logger  # noqa: E402
+
+# from climatelens.preprocessing import datasets
+from utils.process_datasets import process_datasets
 from utils.runtime import load_runtime  # noqa: E402
+
+_, _, datasets = process_datasets()
 
 log = get_logger(__name__)
 
@@ -274,6 +285,7 @@ def preprocess_dataset(
     log.info("wrote %s (%d rows)", out, len(df))
     return out
 
+
 def run_pipeline(
     data_dir: Path,
     processed_dir: Path,
@@ -303,10 +315,11 @@ def run_pipeline(
 
     print("\nCollected Datasets:")
     for key, value in datasets.items():
-        print(f'  {key}: {value}')
+        print(f"  {key}: {value}")
 
     # Load datasets
-    dfs = loading_datasets(datasets)
+    dfs = process_datasets(datasets)  # check if these are equivalent
+    # dfs = loading_datasets(datasets)
     print(f"\n{len(dfs)} dataframes loaded successfully\n")
 
     # Process each dataset
@@ -330,12 +343,12 @@ def run_pipeline(
         # print(peek_df)
 
         # Apply preprocessing
-        df['cleaned_text'] = df[text_col].astype(str).apply(
-            lambda x: preprocess_text(x, custom_stopwords)
+        df["cleaned_text"] = (
+            df[text_col].astype(str).apply(lambda x: preprocess_text(x, custom_stopwords))
         )
 
         # Filter out documents that are too short (< 3 words)
-        df = df[df['cleaned_text'].str.split().str.len() >= 3]
+        df = df[df["cleaned_text"].str.split().str.len() >= 3]
 
         # Save cleaned dataset
         df.to_csv(datasets[name], index=False)

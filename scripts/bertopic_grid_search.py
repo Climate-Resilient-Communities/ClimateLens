@@ -310,4 +310,4 @@ fig = plot_barchart_from_results(
     results_df,
     model_selector=1
 )
-display(fig)
+#display(fig) # uncomment if in jupyernotebook

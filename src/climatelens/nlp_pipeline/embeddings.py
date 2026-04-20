@@ -3,7 +3,6 @@ from sentence_transformers import SentenceTransformer
 
 def compute_embeddings(docs_dict):
     DEFAULT_EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L12-v2"
-    TWITTER_EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L12-v2"
 
     embeddings_dict = {}
     embedding_models = {}
@@ -17,7 +16,9 @@ def compute_embeddings(docs_dict):
         embedding_model = embedding_models[model_name]
 
         print(f"Computing {name} embeddings using {model_name}...")
-        embeddings_dict[name] = embedding_model.encode(docs, batch_size=128, show_progress_bar=True)
+        embeddings_dict[name] = embedding_model.encode(
+            docs, batch_size=128, show_progress_bar=True
+        )
         embedding_models[name] = embedding_model
 
     return embeddings_dict, embedding_models
