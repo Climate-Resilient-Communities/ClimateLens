@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import data_preprocessing as dp
+import src.climatelens.preprocessing.data_preprocessing as dp
 import pytest
 
 

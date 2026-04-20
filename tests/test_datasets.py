@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from utils import datasets
+from config import dataset_registry
 
 
 def _write_registry(path: Path, entries):
@@ -15,22 +15,22 @@ def _write_registry(path: Path, entries):
 
 
 def test_load_registry_default_exists():
-    assert datasets.DEFAULT_REGISTRY.exists()
-    registry = datasets.load_registry()
+    assert dataset_registry.DEFAULT_REGISTRY.exists()
+    registry = dataset_registry.load_registry()
     assert isinstance(registry, list)
     assert all("name" in entry and "filename_patterns" in entry for entry in registry)
 
 
 def test_load_registry_missing_raises(tmp_path):
     with pytest.raises(FileNotFoundError):
-        datasets.load_registry(tmp_path / "missing.yaml")
+        dataset_registry.load_registry(tmp_path / "missing.yaml")
 
 
 def test_load_registry_rejects_non_list(tmp_path):
     path = tmp_path / "bad.yaml"
     path.write_text("not: a list")
     with pytest.raises(ValueError):
-        datasets.load_registry(path)
+        dataset_registry.load_registry(path)
 
 
 def test_discover_datasets_resolves_by_pattern(tmp_path):
@@ -53,7 +53,7 @@ def test_discover_datasets_resolves_by_pattern(tmp_path):
     data_dir.mkdir()
     (data_dir / "climate_twitter.csv").write_text("text\nhi\n")
 
-    specs = datasets.discover_datasets(data_dir, reg_path)
+    specs = dataset_registry.discover_datasets(data_dir, reg_path)
 
     assert len(specs) == 1
     assert specs[0].name == "twitter_sample"
@@ -72,7 +72,7 @@ def test_discover_datasets_skips_missing_by_default(tmp_path):
     data_dir.mkdir()
     (data_dir / "a.csv").write_text("text\nx\n")
 
-    specs = datasets.discover_datasets(data_dir, reg_path)
+    specs = dataset_registry.discover_datasets(data_dir, reg_path)
     assert [s.name for s in specs] == ["a"]
 
 
@@ -88,16 +88,16 @@ def test_discover_datasets_require_all_raises(tmp_path):
     (data_dir / "a.csv").write_text("text\nx\n")
 
     with pytest.raises(FileNotFoundError, match="b"):
-        datasets.discover_datasets(data_dir, reg_path, require_all=True)
+        dataset_registry.discover_datasets(data_dir, reg_path, require_all=True)
 
 
 def test_discover_datasets_missing_dir(tmp_path):
     with pytest.raises(FileNotFoundError):
-        datasets.discover_datasets(tmp_path / "nope")
+        dataset_registry.discover_datasets(tmp_path / "nope")
 
 
 def test_processed_path_uses_registry_name(tmp_path):
-    spec = datasets.DatasetSpec(
+    spec = dataset_registry.DatasetSpec(
         name="my_ds",
         source="twitter",
         path=tmp_path / "raw.csv",

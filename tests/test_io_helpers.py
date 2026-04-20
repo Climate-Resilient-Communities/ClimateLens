@@ -5,7 +5,7 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
-from utils import io_helpers
+from climatelens.utils import io_helpers
 
 
 def test_require_columns_ok():

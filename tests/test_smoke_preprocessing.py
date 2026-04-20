@@ -15,11 +15,11 @@ from __future__ import annotations
 import hashlib
 from pathlib import Path
 
-import data_preprocessing as dp
+import src.climatelens.preprocessing.data_preprocessing as dp
 import pandas as pd
 import pytest
 
-from utils import datasets as ds_mod
+from config import dataset_registry as ds_mod
 
 
 def _hash(path: Path) -> str:

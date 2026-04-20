@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from utils import runtime
+from climatelens.utils import runtime
 
 
 @pytest.fixture(autouse=True)
