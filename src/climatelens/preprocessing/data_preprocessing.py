@@ -2,8 +2,8 @@
 Data Preprocessing Pipeline for Climate NLP Project.
 
 This module provides text cleaning and preprocessing for Twitter and Reddit
-datasets. It reads from ``runtime.data_dir`` (read-only) and writes cleaned
-copies to ``runtime.processed_data_dir`` - the raw inputs are never modified.
+datasets. It reads from ``runtime.data_path`` (read-only) and writes cleaned
+copies to ``runtime.processed_data_path`` - the raw inputs are never modified.
 
 Usage::
 
@@ -21,9 +21,9 @@ from typing import Iterable, List, Optional
 from dotenv import load_dotenv
 
 load_dotenv()
-data_path = os.getenv("DATA_DIR")
+data_path = os.getenv("data_path")
 if not data_path:
-    raise EnvironmentError("DATA_DIR must be set in the .env file.")
+    raise EnvironmentError("data_path must be set in the .env file.")
 if not data_path.exists() or not data_path.is_dir():
         raise NotADirectoryError(f"{data_path} is not a valid directory")
 data_path = Path(data_path)
@@ -32,8 +32,6 @@ import nltk
 import pandas as pd
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
-
-import pandas as pd
 
 # Add src/ to sys.path so utils imports resolve when run as a script.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -238,11 +236,7 @@ def preprocess_text(text: str, custom_stopwords: set) -> str:
     return " ".join(tokens)
 
 def remove_empty_posts():
-    data_dir = Path(data_dir)
-    if not data_dir.exists() or not data_dir.is_dir():
-        raise NotADirectoryError(f"{data_dir} is not a valid directory")
-
-    for csv_path in data_dir.glob("*.csv"):
+    for csv_path in data_path.glob("*.csv"):
         print(f"\nProcessing: {csv_path.name}")
 
         df = pd.read_csv(csv_path)
@@ -328,7 +322,7 @@ def preprocess_dataset(
 
 
 def run_pipeline(
-    data_dir: Path,
+    data_path: Path,
     processed_dir: Path,
     *,
     registry_path: Optional[Path] = None,
@@ -344,10 +338,10 @@ def run_pipeline(
     custom_stopwords = build_custom_stopwords()
 
     dataset_specs = (
-        list(specs) if specs is not None else discover_datasets(data_dir, registry_path)
+        list(specs) if specs is not None else discover_datasets(data_path, registry_path)
     )
     if not dataset_specs:
-        log.warning("no datasets matched the registry in %s", data_dir)
+        log.warning("no datasets matched the registry in %s", data_path)
         return []
 
     if not datasets:
@@ -410,7 +404,7 @@ def main() -> int:
     log.info("data preprocessing starting")
     log.info("paths:\n%s", runtime.describe())
 
-    written = run_pipeline(runtime.data_dir, runtime.processed_data_dir)
+    written = run_pipeline(runtime.data_path, runtime.processed_data_path)
     if not written:
         log.error("no datasets were processed")
         return 1
