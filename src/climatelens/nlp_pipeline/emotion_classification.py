@@ -2,7 +2,7 @@
 Emotion classification stage.
 
 Reads the preprocessed datasets from ``runtime.processed_data_dir`` (with a
-fallback to ``runtime.data_dir``), runs a sentiment + emotion classifier, and
+fallback to ``runtime.data_dir``), runs an emotion classifier, and
 writes ``<name>_with_emotions.csv`` into ``runtime.output_data_dir``.
 
 The model families are selected per-dataset via the ``emotion_profile`` field
@@ -40,21 +40,17 @@ _EMOTION_MODELS: Dict[str, str] = {
     "reddit": "SamLowe/roberta-base-go_emotions",  # 28 labels
     "default": "SamLowe/roberta-base-go_emotions",
 }
-_SENTIMENT_MODEL = "finiteautomata/bertweet-base-sentiment-analysis"
-
 
 def load_models(profiles: Iterable[str]) -> Dict[str, object]:
     """
-    Load the sentiment model and every emotion model we'll need.
+    Load each emotion model we'll need.
 
     ``profiles`` should be the ``emotion_profile`` field of each dataset being
     processed; we load each profile's model exactly once.
     """
     device = 0 if torch.cuda.is_available() else -1
-    log.info("loading sentiment model (%s)", _SENTIMENT_MODEL)
-    sentiment_analyzer = pipeline("text-classification", model=_SENTIMENT_MODEL, device=device)
 
-    models: Dict[str, object] = {"sentiment": sentiment_analyzer}
+    models = {}
     for profile in sorted(set(profiles) | {"default"}):
         model_name = _EMOTION_MODELS.get(profile, _EMOTION_MODELS["default"])
         key = f"emotion_{profile}"
@@ -71,32 +67,6 @@ def choose_emotion_model(profile: str, models: Dict[str, object]):
 # =============================================================================
 # Analysis
 # =============================================================================
-
-
-def sentiment_analysis(
-    df: pd.DataFrame,
-    analyzer,
-    text_col: Optional[str] = None,
-    batch_size: int = 128,
-) -> pd.DataFrame:
-    """Run sentiment classification and add ``sentiment_label`` / ``sentiment_proba``."""
-    if text_col is None:
-        text_col = next((c for c in ("body", "text") if c in df.columns), None)
-        if text_col is None:
-            raise ValueError("no valid text column found for sentiment analysis")
-
-    texts = df[text_col].tolist()
-    labels, confs = [], []
-    for i in tqdm(range(0, len(texts), batch_size), desc="sentiment"):
-        batch = texts[i : i + batch_size]
-        results = analyzer(batch, padding=True, truncation=True)
-        for r in results:
-            labels.append(r["label"])
-            confs.append(r["score"])
-
-    df["sentiment_label"] = labels
-    df["sentiment_proba"] = confs
-    return df
 
 
 def emotion_analysis(
