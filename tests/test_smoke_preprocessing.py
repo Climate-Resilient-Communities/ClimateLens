@@ -15,10 +15,10 @@ from __future__ import annotations
 import hashlib
 from pathlib import Path
 
-import src.climatelens.preprocessing.data_preprocessing as dp
 import pandas as pd
 import pytest
 
+import src.climatelens.preprocessing.data_preprocessing as dp
 from config import dataset_registry as ds_mod
 
 

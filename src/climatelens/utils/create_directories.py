@@ -3,28 +3,32 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 
-def create_directories(code_dir):
-    current_time = datetime.now(ZoneInfo("America/New_York")).strftime("%m %d - %H %M Hours")
-    print(f"Current time: {current_time}")
+# improved function, but still need to implement
+def create_directories(base_dir, dir_names, use_timestamp=False):
+    base_dir = Path(base_dir)
 
-    outputs_dir = Path(code_dir) / "outputs"
-    base = outputs_dir / current_time
+    if use_timestamp:
+        current_time = datetime.now(
+            ZoneInfo("America/New_York")
+        ).strftime("%m %d - %H %M")
+        base_dir = base_dir / current_time
 
-    directories = {
-        "models": base / "models",
-        "IDM": base / "visualizations" / "IDM",
-        "hierarchies": base / "visualizations" / "hierarchies",
-        "barcharts": base / "visualizations" / "barcharts",
-        "dtm": base / "visualizations" / "dtm",
-    }
+    created_paths = {}
 
-    for path in directories.values():
+    for name in dir_names:
+        path = base_dir / name
         path.mkdir(parents=True, exist_ok=True)
+        created_paths[name] = path
 
-    return (
-        directories["models"],
-        directories["IDM"],
-        directories["hierarchies"],
-        directories["barcharts"],
-        directories["dtm"],
-    )
+    return created_paths
+
+# example:
+paths = create_directories(
+    "outputs", # following AML Job convention
+    [
+        "models",
+        "visualizations/IDM",
+        "visualizations/hierarchies"
+    ],
+    use_timestamp=True
+)

@@ -15,6 +15,7 @@ then read paths from the returned :class:`RuntimeConfig` instead of touching
 from __future__ import annotations
 
 import os
+import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Dict, Iterable, Optional
@@ -83,6 +84,24 @@ def load_env_file(start: Optional[Path] = None) -> Optional[Path]:
 # RuntimeConfig
 # ---------------------------------------------------------------------------
 
+# timer decorator
+def timer_dec(func):
+    def wrapper(*args, **kwargs):
+        start_time = time.time()
+        try:
+            result = func(*args, **kwargs)
+        finally: # ensure we log time even if an exception occurs
+            end_time = time.time()
+            execution_time = end_time - start_time
+            # instead of printing, we store the time in a list (or a file)
+            log_time(func.__name__, execution_time)
+        return result
+    return wrapper
+
+time_logs = []
+def log_time(function_name, execution_time):
+    print(f"Function '{function_name}' executed in {execution_time:.4f} seconds.")
+    time_logs.append((function_name, execution_time))
 
 @dataclass(frozen=True)
 class RuntimeConfig:

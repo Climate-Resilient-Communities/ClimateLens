@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
-import src.climatelens.preprocessing.data_preprocessing as dp
 import pytest
+
+import src.climatelens.preprocessing.data_preprocessing as dp
 
 
 @pytest.fixture(scope="module")
