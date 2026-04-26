@@ -43,32 +43,16 @@ def contains_keywords(text, keywords):
     lower = text.lower()
     return any(term in lower for term in keywords)
 
-
 def load_environment():
-    try:
-        import google.colab  # noqa: F401
-        from google.colab import drive
+    load_dotenv()
+    data_dir, reddit_raw_dir = os.getenv("DATA_DIR"), os.getenv("REDDIT_RAW_DIR")
 
-        drive.mount("/content/drive")
-
-        base_path = "..."
-        env_path = Path(base_path) / ".env"
-    except ImportError:
-        env_path = Path(__file__).resolve().parent / ".env"
-
-    if env_path.exists():
-        load_dotenv(env_path)
-        print("Loading environment variables")
-        data_dir, reddit_raw_dir = os.getenv("DATA_DIR"), os.getenv("REDDIT_RAW_DIR")
-    else:
-        raise FileNotFoundError(f".env file not found at {env_path}")
-
+    if not data_dir or not reddit_raw_dir:
+        raise EnvironmentError(
+            "DATA_DIR and REDDIT_RAW_DIR must be set in the .env file."
+        )
     return data_dir, reddit_raw_dir
-
-
 data_dir, reddit_raw_dir = load_environment()
-if not data_dir or not reddit_raw_dir:
-    raise EnvironmentError("DATA_DIR and REDDIT_RAW_DIR must be set in the .env file.")
 
 ### Batch process folder of JSONL files
 input_folder = Path(reddit_raw_dir)
