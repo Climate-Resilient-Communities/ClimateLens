@@ -136,21 +136,16 @@ make clean        # remove compiled Python files
 ClimateLens/
 │
 ├── src/
+│   ├── config/
+│        └── datasets.yaml          # Dataset registry (text/timestamp columns, profiles)
 │   └── climatelens/                # Core Python package
-│        ├── config/
-│           └── datasets.yaml       # Dataset registry (text/timestamp columns, profiles)
 │        ├── preprocessing/         # Data cleaning pipelines
-│           └── LDA/                # Baseline LDA topic modeling implementation
 │        ├── models/                # ML models and classifiers
-│        ├── topic_modeling/        # Topic modeling implementations
+│           └── LDA/                # Baseline LDA topic modeling implementation
+│        ├── nlp_pipeline/          # Topic modeling implementations
 │        ├── evaluation/            # Metrics and evaluation logic
+│        ├── visualizations/        # Visualization code
 │        └── utils/                 # Shared pipeline utilities
-│           ├── runtime.py                # Env/path resolution, AzureML detection
-│           ├── logging_config.py         # Structured logging setup
-│           ├── datasets.py               # Registry loader
-│           ├── io_helpers.py             # Schema validation, safe CSV writes
-│           ├── twitter_chunks.py         # CLI: split Twitter CSV into chunks
-│           └── twitter_sample.py         # CLI: take a fixed-size Twitter sample
 │
 ├── docs/                           # Documentation
 ├── scripts/                        # Standalone scripts for running pipelines

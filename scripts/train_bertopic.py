@@ -1,8 +1,20 @@
+import os
 import traceback
 
-from climatelens.utils.load_env import load_environment
+from dotenv import load_dotenv
 
-data_dir, code_dir, JUPYTER = load_environment()
+
+def load_environment():
+    load_dotenv()
+    data_dir, code_dir = os.getenv("DATA_DIR"), os.getenv("CODE_DIR")
+
+    if not data_dir or not code_dir:
+        raise EnvironmentError(
+            "DATA_DIR and CODE_DIR must be set in the .env file."
+        )
+    return data_dir, code_dir
+data_dir, code_dir = load_environment()
+
 from climatelens.nlp_pipeline import topic_modeling as tm
 from climatelens.utils import create_directories, process_datasets
 

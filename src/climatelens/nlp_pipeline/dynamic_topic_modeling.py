@@ -39,7 +39,7 @@ def prepare_timestamps(dfs, name):
         print(f"Skipping Dynamic Topic Modeling for {name}.")
         return None
 
-    print(f" Found timestamp column '{found_col}' for {name}")
+    print(f"Found timestamp column '{found_col}' for {name}")
 
     try:
         if found_col == "created_utc":
