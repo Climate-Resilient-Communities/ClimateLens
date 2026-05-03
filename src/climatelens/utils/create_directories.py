@@ -2,6 +2,7 @@ from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
+
 def create_directories(base_dir, dir_names, use_timestamp=False):
     base_dir = Path(base_dir)
 

@@ -5,6 +5,9 @@
 # linters, and test runners. Removing the legacy flit/[project] block lets
 # `pip install -r requirements.txt` succeed without a package skeleton.
 
+name = "climatelens"
+version = "0.2.0"
+
 classifiers = [
   "Programming Language :: Python :: 3",
   "License :: OSI Approved :: MIT License"

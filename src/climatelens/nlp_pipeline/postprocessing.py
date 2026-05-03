@@ -195,11 +195,11 @@ def update_model(
         ],
         use_timestamp=True
     )
-    
+
     IDM_dir = paths["visualizations/IDM"]
     hierarchy_dir = paths["visualizations/hierarchies"]
     barchart_dir = paths["visualizations/barcharts"]
-    
+
     topic_model = topic_models[name]
 
     # Clean dataframe before any merging operations
@@ -209,7 +209,7 @@ def update_model(
     topic_model_clustered.update_topics(docs_dict[name], n_gram_range=(3, 5))
 
     core_topics = topic_model_clustered.get_topic_info()
-    
+
     # Process core topics without merging large columns into main DF
     core_topics_metadata = process_core_topics(dfs, name, core_topics, topics_dict, probs_dict)
     core_topics_dict[name] = core_topics_metadata
