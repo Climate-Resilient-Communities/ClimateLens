@@ -1,12 +1,3 @@
-"""
-Create a fixed-size sample from a larger cleaned Twitter CSV.
-
-Usage::
-
-    python src/utils/twitter_sample.py --input <cleaned.csv> \\
-        --output <sample.csv> [--n 100000]
-"""
-
 from __future__ import annotations
 
 import argparse
@@ -14,9 +5,14 @@ import csv
 import json
 import os
 from pathlib import Path
+from typing import List, Optional
 
 import pandas as pd
 from dotenv import load_dotenv
+from pandas import DataFrame
+
+load_dotenv()
+data_dir, twitter_raw_dir = os.getenv("DATA_DIR"), os.getenv("TWITTER_RAW_DIR")
 
 
 def make_sample(input_path: Path, output_path: Path, n: int = 100_000) -> Path:
@@ -41,7 +37,7 @@ self-contained CLI so downstream callers and tests can exercise it.
 """
 
 
-def split_dataframe(df: pd.DataFrame, n_chunks: int):
+def split_dataframe(df: DataFrame, n_chunks: int):
     """Yield successive roughly-equal chunks of *df*."""
     if n_chunks <= 0:
         raise ValueError("n_chunks must be >= 1")
@@ -73,46 +69,12 @@ def write_chunks(
         print(f"Saved {len(chunk)} rows to {out}")
     return written
 
-
-def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--input", required=True, type=Path)
-    parser.add_argument("--output", required=True, type=Path)
-    parser.add_argument("--n", type=int, default=100_000)
-    args = parser.parse_args()
-    make_sample(args.input, args.output, args.n)
-
-    parser.add_argument("--input", required=True, type=Path)
-    parser.add_argument("--output-dir", required=True, type=Path)
-    parser.add_argument("--n-chunks", type=int, default=32)
-    parser.add_argument("--prefix", default="climate_twitter_clean")
-    args = parser.parse_args()
-
-    write_chunks(args.input, args.output_dir, args.n_chunks, args.prefix)
-    return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())
-
 """
 Process raw Twitter JSONL data into a cleaned CSV format.
 """
 
-
-def load_environment():
-    load_dotenv()
-    data_dir, twitter_raw_dir = os.getenv("DATA_DIR"), os.getenv("TWITTER_RAW_DIR")
-
-    if not data_dir or not twitter_raw_dir:
-        raise EnvironmentError(
-            "DATA_DIR and TWITTER_RAW_DIR must be set in the .env file."
-        )
-
-    return data_dir, twitter_raw_dir
-
-def preview_jsonl(file_path, num_lines=10):
-    preview_data = []
+def preview_jsonl(file_path: str, num_lines: int =10) -> List[str]:
+    preview_data: List[str] = []
     with open(file_path, "r", encoding="utf-8") as f:
         for _ in range(num_lines):
             try:
@@ -121,7 +83,7 @@ def preview_jsonl(file_path, num_lines=10):
                 continue
     return preview_data
 
-def convert_jsonl_to_csv(input_path, output_path, fieldnames):
+def convert_jsonl_to_csv(input_path: str, output_path: str, fieldnames: List[str]):
     with open(output_path, "w", encoding="utf-8", newline="") as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
@@ -137,7 +99,11 @@ def convert_jsonl_to_csv(input_path, output_path, fieldnames):
                 except json.JSONDecodeError:
                     continue
 
-def process_twitter_data(input_path, output_path, desired_columns=None):
+def process_twitter_data(
+        input_path: str,
+        output_path: str,
+        desired_columns: Optional[List[str]] = None
+        ) -> DataFrame:
     # Process Twitter JSONL data and save as CSV.
 
     if desired_columns is None: #columns we want to keep for analysis
@@ -145,7 +111,7 @@ def process_twitter_data(input_path, output_path, desired_columns=None):
 
     # Preview and display column info
     preview_rows = preview_jsonl(input_path)
-    df_preview = pd.DataFrame(preview_rows)
+    df_preview = DataFrame(preview_rows)
 
     print("Preview columns:", df_preview.columns.tolist())
     print(f"\nSample of {desired_columns[0]} and {desired_columns[1]}:")
@@ -160,12 +126,11 @@ def process_twitter_data(input_path, output_path, desired_columns=None):
 
     return df_full
 
-def process_twitter_data_main() -> pd.DataFrame:
-    data_dir, twitter_raw_dir = load_environment()
-    input_path = Path(twitter_raw_dir) / "climate.jsonl" # raw NDJSON Twitter file
-    output_path = Path(data_dir) / "twitter_climate_clean.csv" # cleaned CSV file
+def process_twitter_data_main() -> DataFrame:
+    input_path = Path(twitter_raw_dir) / "climate.jsonl"  # raw NDJSON Twitter file
+    output_path = Path(data_dir) / "twitter_climate_clean.csv"  # cleaned CSV file
 
-    df = process_twitter_data(input_path, output_path) # Process data
+    df = process_twitter_data(input_path, output_path)  # Process data
 
     if len(df) >= 5:
         print("\nRandom sample (5 rows):")
@@ -173,5 +138,37 @@ def process_twitter_data_main() -> pd.DataFrame:
 
     return df
 
+
+def main() -> int:
+    """CLI entry point - choose between sampling or chunking."""
+    parser = argparse.ArgumentParser(description="Twitter data processing utilities")
+    subparsers = parser.add_subparsers(dest="command", required=True, help="Command to run")
+
+    # Sample command
+    sample_parser = subparsers.add_parser("sample", help="Create a sample CSV")
+    sample_parser.add_argument("--input", required=True, type=Path)
+    sample_parser.add_argument("--output", required=True, type=Path)
+    sample_parser.add_argument("--n", type=int, default=100_000)
+
+    # Chunks command
+    chunk_parser = subparsers.add_parser("chunks", help="Split into chunks")
+    chunk_parser.add_argument("--input", required=True, type=Path)
+    chunk_parser.add_argument("--output-dir", required=True, type=Path)
+    chunk_parser.add_argument("--n-chunks", type=int, default=32)
+    chunk_parser.add_argument("--prefix", default="climate_twitter_clean")
+
+    args = parser.parse_args()
+
+    if args.command == "sample":
+        make_sample(args.input, args.output, args.n)
+    elif args.command == "chunks":
+        write_chunks(args.input, args.output_dir, args.n_chunks, args.prefix)
+
+    return 0
+
+
 if __name__ == "__main__":
+    # Choose which main to run
+    # For CLI tool: raise SystemExit(main())
+    # For Twitter processing: df = process_twitter_data_main()
     df = process_twitter_data_main()

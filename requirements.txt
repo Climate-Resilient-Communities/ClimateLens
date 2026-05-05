@@ -23,8 +23,8 @@ mlflow==2.14.3       # Model tracking, packaging, and deployment
 numpy==1.24.3
 pandas==2.3.1
 scipy==1.15.3
-pyarrow
-python-dateutil
+pyarrow>=14.0.0
+python-dateutil>=2.8.2
 
 # Configuration / I/O
 python-dotenv==1.1.0
@@ -35,8 +35,7 @@ emoji==0.6.0
 nltk==3.9.0
 
 # Visualization
-matplotlib==3.10.0   # Interactive plotting and visualizations
-matplotlib==3.10.5 # needs checking
+matplotlib==3.10.5   # Interactive plotting and visualizations
 seaborn==0.13.2
 plotly==6.3.0
 kaleido==0.2.1
@@ -47,3 +46,4 @@ tqdm==4.67.1
 # Dev / tooling (kept together so CI and contributor setups agree)
 ruff==0.6.9
 pytest==8.3.3
+mypy==1.20.0

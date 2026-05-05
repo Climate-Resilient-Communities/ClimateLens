@@ -18,7 +18,7 @@ import os
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, Iterable, Optional
+from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple
 
 from dotenv import load_dotenv
 
@@ -84,9 +84,13 @@ def load_env_file(start: Optional[Path] = None) -> Optional[Path]:
 # RuntimeConfig
 # ---------------------------------------------------------------------------
 
+# Type alias for clarity
+TimeLog = Tuple[str, float]
+time_logs: List[TimeLog] = []
+
 # timer decorator
-def timer_dec(func):
-    def wrapper(*args, **kwargs):
+def timer_dec(func: Callable[..., Any]) -> Callable[..., Any]:
+    def wrapper(*args: Any, **kwargs: Any) -> Any:
         start_time = time.time()
         try:
             result = func(*args, **kwargs)
@@ -99,7 +103,7 @@ def timer_dec(func):
     return wrapper
 
 time_logs = []
-def log_time(function_name, execution_time):
+def log_time(function_name: str, execution_time: float) -> None:
     print(f"Function '{function_name}' executed in {execution_time:.4f} seconds.")
     time_logs.append((function_name, execution_time))
 

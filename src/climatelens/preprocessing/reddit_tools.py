@@ -2,8 +2,13 @@ import csv
 import json
 import os
 from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 from dotenv import load_dotenv
+
+load_dotenv()
+data_dir: Optional[str] = os.getenv("DATA_DIR")
+reddit_raw_dir: Optional[str] = os.getenv("REDDIT_RAW_DIR")
 
 search_terms = [
     "climate change",
@@ -35,63 +40,48 @@ search_terms = [
     "PTSD",
 ]
 
-
-def contains_keywords(text, keywords):
+def contains_keywords(text: Optional[str], keywords: List[str]) -> bool:
     """Checks if any keyword appears in the given text."""
     if not text:
         return False
-    lower = text.lower()
+    lower: str = text.lower()
     return any(term in lower for term in keywords)
 
-def load_environment():
-    load_dotenv()
-    data_dir, reddit_raw_dir = os.getenv("DATA_DIR"), os.getenv("REDDIT_RAW_DIR")
-
-    if not data_dir or not reddit_raw_dir:
-        raise EnvironmentError(
-            "DATA_DIR and REDDIT_RAW_DIR must be set in the .env file."
-        )
-    return data_dir, reddit_raw_dir
-data_dir, reddit_raw_dir = load_environment()
-
-### Batch process folder of JSONL files
-input_folder = Path(reddit_raw_dir)
-output_folder = Path(data_dir)
-output_folder.mkdir(exist_ok=True)
-
-# Iterating over all .jsonl files in input folder
-# this for loop works, but can be improved for logic and readability
-for file in os.listdir(input_folder):
-    if not file.endswith(".jsonl"):
-        continue
-
-    input_path = input_folder / file
-
-    # Peek at first valid line
-    with open(input_path, "r", encoding="utf-8") as f:
-        first_valid_line = None
+def peek_first_valid_line(file_path: Path) -> Optional[Dict[str, Any]]:
+    """Read first valid JSON line from a file."""
+    with open(file_path, "r", encoding="utf-8") as f:
         for line in f:
             try:
-                first_valid_line = json.loads(line)
-                break
+                return json.loads(line)
             except json.JSONDecodeError:
                 continue
+    return None
 
-    if not first_valid_line:
-        print(f"Skipping unreadable or empty file: {file}")
-        continue
 
-    # Determine file type
-    is_comment = "body" in first_valid_line
-    type_tag = "comments" if is_comment else "submissions"
-    subreddit = first_valid_line.get("subreddit", "unknown").lower()
+def determine_file_type(first_entry: Dict[str, Any]) -> tuple[bool, str]:
+    """Determine if file contains comments or submissions."""
+    is_comment: bool = "body" in first_entry
+    type_tag: str = "comments" if is_comment else "submissions"
+    return is_comment, type_tag
 
-    name_prefix = f"filtered_{subreddit}_{type_tag}.csv"
-    output_path = output_folder / name_prefix
 
-    print(f"Processing {file} → {output_path.name}")
+def extract_text_from_entry(entry: Dict[str, Any], is_comment: bool) -> Optional[str]:
+    """Extract text content from a Reddit entry."""
+    if is_comment:
+        return entry.get("body")
+    else:
+        return entry.get("selftext") or entry.get("title")
 
-    match_count = 0
+
+def process_reddit_file(
+    input_path: Path,
+    output_path: Path,
+    is_comment: bool,
+    search_terms: List[str]
+) -> int:
+    """Process a single Reddit JSONL file and return match count."""
+    match_count: int = 0
+
     with open(output_path, "w", newline="", encoding="utf-8") as csv_out:
         writer = csv.DictWriter(csv_out, fieldnames=["subreddit", "body", "created_utc"])
         writer.writeheader()
@@ -99,25 +89,80 @@ for file in os.listdir(input_folder):
         with open(input_path, "r", encoding="utf-8") as f:
             for line in f:
                 try:
-                    entry = json.loads(line)
-                    text = (
-                        entry.get("body")
-                        if is_comment
-                        else entry.get("selftext") or entry.get("title")
-                    )
+                    entry: Dict[str, Any] = json.loads(line)
+                    text: Optional[str] = extract_text_from_entry(entry, is_comment)
+
                     if contains_keywords(text, search_terms):
-                        writer.writerow(
-                            {
-                                "subreddit": entry.get("subreddit"),
-                                "body": text,
-                                "created_utc": entry.get("created_utc"),
-                            }
-                        )
+                        writer.writerow({
+                            "subreddit": entry.get("subreddit"),
+                            "body": text,
+                            "created_utc": entry.get("created_utc"),
+                        })
                         match_count += 1
                 except json.JSONDecodeError:
                     continue
 
-    if match_count == 0:
-        print(f"No matches found in {file}")
-    else:
-        print(f"{match_count} matches written to {output_path.name}")
+    return match_count
+
+
+def process_all_reddit_files(
+    input_folder: Path,
+    output_folder: Path,
+    search_terms: List[str]
+) -> None:
+    """Batch process all JSONL files in a folder."""
+    output_folder.mkdir(exist_ok=True)
+
+    # Iterating over all .jsonl files in input folder
+    for file in os.listdir(input_folder):
+        if not file.endswith(".jsonl"):
+            continue
+
+        input_path: Path = input_folder / file
+
+        # Peek at first valid line
+        first_valid_line: Optional[Dict[str, Any]] = peek_first_valid_line(input_path)
+
+        if not first_valid_line:
+            print(f"Skipping unreadable or empty file: {file}")
+            continue
+
+        # Determine file type
+        is_comment: bool
+        type_tag: str
+        is_comment, type_tag = determine_file_type(first_valid_line)
+
+        subreddit: str = first_valid_line.get("subreddit", "unknown").lower()
+        name_prefix: str = f"filtered_{subreddit}_{type_tag}.csv"
+        output_path: Path = output_folder / name_prefix
+
+        print(f"Processing {file} → {output_path.name}")
+
+        match_count: int = process_reddit_file(
+            input_path, output_path, is_comment, search_terms
+        )
+
+        if match_count == 0:
+            print(f"No matches found in {file}")
+        else:
+            print(f"{match_count} matches written to {output_path.name}")
+
+
+def main() -> None:
+    """Main entry point for Reddit data processing."""
+    if not data_dir or not reddit_raw_dir:
+        print("Error: DATA_DIR and REDDIT_RAW_DIR must be set in .env file")
+        return
+
+    input_folder: Path = Path(reddit_raw_dir)
+    output_folder: Path = Path(data_dir)
+
+    if not input_folder.exists():
+        print(f"Error: Input folder {input_folder} does not exist")
+        return
+
+    process_all_reddit_files(input_folder, output_folder, search_terms)
+
+
+if __name__ == "__main__":
+    main()

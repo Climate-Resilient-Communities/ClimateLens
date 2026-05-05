@@ -1,9 +1,11 @@
 from datetime import datetime
 from pathlib import Path
+from typing import Dict, List
 from zoneinfo import ZoneInfo
 
 
-def create_directories(base_dir, dir_names, use_timestamp=False):
+def create_directories(base_dir: str, dir_names: List[str],
+                       use_timestamp: bool = False) -> Dict[str, Path]:
     base_dir = Path(base_dir)
 
     if use_timestamp:
