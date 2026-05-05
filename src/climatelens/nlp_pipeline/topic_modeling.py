@@ -43,14 +43,14 @@ DATASET_PARAMS: Dict[str, Dict[str, Any]] = {
         "min_cluster_size": 3,
         "min_samples": 3,
         "min_topic_size": 15,
-        "nr_topics": "auto", # experiment with nr_topics=params.get("nr_topics", "auto") for testing
+        "nr_topics": "auto",  # experiment with nr_topics=params.get("nr_topics", "auto") for testing
     },  # fallback for visualization error (less than 4 topics)
 }
 
 
 def create_submodels(
-        params: Optional[Dict[str, Any]] = None
-        ) -> Tuple[CountVectorizer, UMAP, HDBSCAN, MaximalMarginalRelevance]:
+    params: Optional[Dict[str, Any]] = None,
+) -> Tuple[CountVectorizer, UMAP, HDBSCAN, MaximalMarginalRelevance]:
     params = params or {
         "min_df": 0.05,
         "max_df": 0.9,
@@ -109,7 +109,7 @@ def bert_model(
     docs: List[str],
     embeddings: Optional[NDArray[np.float32]],
     embedding_model: SentenceTransformer,
-    params: Optional[Dict[str, Any]] = None
+    params: Optional[Dict[str, Any]] = None,
 ) -> Tuple[Optional[BERTopic], Optional[List[int]], Optional[List[float]]]:
     if not docs:
         print(f"No docs provided for {dataset_name}. Skipping topic modeling.")
@@ -148,11 +148,7 @@ def bert_model(
         print(f"{dataset_name} topic modeling completed in {elapsed_seconds:.3f} seconds")
 
 
-def save_and_reload_model(
-    name: str,
-    model_dir: Path,
-    topic_models: Dict[str, BERTopic]
-) -> None:
+def save_and_reload_model(name: str, model_dir: Path, topic_models: Dict[str, BERTopic]) -> None:
     save_path = Path(model_dir) / f"{name}.safetensors"
     topic_models[name].save(str(save_path), serialization="safetensors")
     print(f"Model saved: {save_path}")

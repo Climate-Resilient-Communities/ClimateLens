@@ -69,11 +69,13 @@ def write_chunks(
         print(f"Saved {len(chunk)} rows to {out}")
     return written
 
+
 """
 Process raw Twitter JSONL data into a cleaned CSV format.
 """
 
-def preview_jsonl(file_path: str, num_lines: int =10) -> List[str]:
+
+def preview_jsonl(file_path: str, num_lines: int = 10) -> List[str]:
     preview_data: List[str] = []
     with open(file_path, "r", encoding="utf-8") as f:
         for _ in range(num_lines):
@@ -82,6 +84,7 @@ def preview_jsonl(file_path: str, num_lines: int =10) -> List[str]:
             except (json.JSONDecodeError, StopIteration):
                 continue
     return preview_data
+
 
 def convert_jsonl_to_csv(input_path: str, output_path: str, fieldnames: List[str]):
     with open(output_path, "w", encoding="utf-8", newline="") as csvfile:
@@ -92,21 +95,17 @@ def convert_jsonl_to_csv(input_path: str, output_path: str, fieldnames: List[str
             for line in f:
                 try:
                     data = json.loads(line)
-                    writer.writerow({
-                        field: data.get(field, "")
-                        for field in fieldnames
-                    })
+                    writer.writerow({field: data.get(field, "") for field in fieldnames})
                 except json.JSONDecodeError:
                     continue
 
+
 def process_twitter_data(
-        input_path: str,
-        output_path: str,
-        desired_columns: Optional[List[str]] = None
-        ) -> DataFrame:
+    input_path: str, output_path: str, desired_columns: Optional[List[str]] = None
+) -> DataFrame:
     # Process Twitter JSONL data and save as CSV.
 
-    if desired_columns is None: #columns we want to keep for analysis
+    if desired_columns is None:  # columns we want to keep for analysis
         desired_columns = ["created_at", "text"]
 
     # Preview and display column info
@@ -125,6 +124,7 @@ def process_twitter_data(
     print(df_full.info())
 
     return df_full
+
 
 def process_twitter_data_main() -> DataFrame:
     input_path = Path(twitter_raw_dir) / "climate.jsonl"  # raw NDJSON Twitter file

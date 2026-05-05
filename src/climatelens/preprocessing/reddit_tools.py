@@ -40,12 +40,14 @@ search_terms = [
     "PTSD",
 ]
 
+
 def contains_keywords(text: Optional[str], keywords: List[str]) -> bool:
     """Checks if any keyword appears in the given text."""
     if not text:
         return False
     lower: str = text.lower()
     return any(term in lower for term in keywords)
+
 
 def peek_first_valid_line(file_path: Path) -> Optional[Dict[str, Any]]:
     """Read first valid JSON line from a file."""
@@ -74,10 +76,7 @@ def extract_text_from_entry(entry: Dict[str, Any], is_comment: bool) -> Optional
 
 
 def process_reddit_file(
-    input_path: Path,
-    output_path: Path,
-    is_comment: bool,
-    search_terms: List[str]
+    input_path: Path, output_path: Path, is_comment: bool, search_terms: List[str]
 ) -> int:
     """Process a single Reddit JSONL file and return match count."""
     match_count: int = 0
@@ -93,11 +92,13 @@ def process_reddit_file(
                     text: Optional[str] = extract_text_from_entry(entry, is_comment)
 
                     if contains_keywords(text, search_terms):
-                        writer.writerow({
-                            "subreddit": entry.get("subreddit"),
-                            "body": text,
-                            "created_utc": entry.get("created_utc"),
-                        })
+                        writer.writerow(
+                            {
+                                "subreddit": entry.get("subreddit"),
+                                "body": text,
+                                "created_utc": entry.get("created_utc"),
+                            }
+                        )
                         match_count += 1
                 except json.JSONDecodeError:
                     continue
@@ -106,9 +107,7 @@ def process_reddit_file(
 
 
 def process_all_reddit_files(
-    input_folder: Path,
-    output_folder: Path,
-    search_terms: List[str]
+    input_folder: Path, output_folder: Path, search_terms: List[str]
 ) -> None:
     """Batch process all JSONL files in a folder."""
     output_folder.mkdir(exist_ok=True)
@@ -138,9 +137,7 @@ def process_all_reddit_files(
 
         print(f"Processing {file} → {output_path.name}")
 
-        match_count: int = process_reddit_file(
-            input_path, output_path, is_comment, search_terms
-        )
+        match_count: int = process_reddit_file(input_path, output_path, is_comment, search_terms)
 
         if match_count == 0:
             print(f"No matches found in {file}")

@@ -41,6 +41,7 @@ _EMOTION_MODELS: Dict[str, str] = {
     "default": "SamLowe/roberta-base-go_emotions",
 }
 
+
 def load_models(profiles: Iterable[str]) -> Dict[str, object]:
     """
     Load each emotion model we'll need.

@@ -88,24 +88,30 @@ def load_env_file(start: Optional[Path] = None) -> Optional[Path]:
 TimeLog = Tuple[str, float]
 time_logs: List[TimeLog] = []
 
+
 # timer decorator
 def timer_dec(func: Callable[..., Any]) -> Callable[..., Any]:
     def wrapper(*args: Any, **kwargs: Any) -> Any:
         start_time = time.time()
         try:
             result = func(*args, **kwargs)
-        finally: # ensure we log time even if an exception occurs
+        finally:  # ensure we log time even if an exception occurs
             end_time = time.time()
             execution_time = end_time - start_time
             # instead of printing, we store the time in a list (or a file)
             log_time(func.__name__, execution_time)
         return result
+
     return wrapper
 
+
 time_logs = []
+
+
 def log_time(function_name: str, execution_time: float) -> None:
     print(f"Function '{function_name}' executed in {execution_time:.4f} seconds.")
     time_logs.append((function_name, execution_time))
+
 
 @dataclass(frozen=True)
 class RuntimeConfig:

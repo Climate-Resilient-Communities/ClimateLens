@@ -25,7 +25,7 @@ data_path = os.getenv("data_path")
 if not data_path:
     raise EnvironmentError("data_path must be set in the .env file.")
 if not data_path.exists() or not data_path.is_dir():
-        raise NotADirectoryError(f"{data_path} is not a valid directory")
+    raise NotADirectoryError(f"{data_path} is not a valid directory")
 data_path = Path(data_path)
 
 import nltk
@@ -235,6 +235,7 @@ def preprocess_text(text: str, custom_stopwords: set) -> str:
     tokens = remove_consecutive_repeats(tokens)
     return " ".join(tokens)
 
+
 def remove_empty_posts():
     for csv_path in data_path.glob("*.csv"):
         print(f"\nProcessing: {csv_path.name}")
@@ -265,6 +266,7 @@ def remove_empty_posts():
         df.to_csv(csv_path, index=False)
 
     print("\nDone processing all CSV files.")
+
 
 # =============================================================================
 # PIPELINE

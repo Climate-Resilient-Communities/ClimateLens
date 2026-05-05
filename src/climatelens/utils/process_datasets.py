@@ -8,20 +8,19 @@ from pandas import DataFrame
 
 # Process CSV datasets from a given directory
 def process_datasets(
-    data_path: str,
-    text_cols: Tuple[str, ...] = ("body", "text")
+    data_path: str, text_cols: Tuple[str, ...] = ("body", "text")
 ) -> Tuple[Dict[str, DataFrame], Dict[str, List[str]], Dict[str, Path]]:
     """
-     Returns:
-        Tuple of (dfs, docs_dict, datasets)
-        - dfs: Dictionary mapping dataset names to DataFrames
-        - docs_dict: Dictionary mapping dataset names to lists of document texts
-        - datasets: Dictionary mapping dataset names to file paths
+    Returns:
+       Tuple of (dfs, docs_dict, datasets)
+       - dfs: Dictionary mapping dataset names to DataFrames
+       - docs_dict: Dictionary mapping dataset names to lists of document texts
+       - datasets: Dictionary mapping dataset names to file paths
     """
     # maps dataset names to...
-    datasets: Dict[str, Path] = {} # file paths
-    dfs: Dict[str, DataFrame] = {} # DataFrames
-    docs_dict: Dict[str, List[str]] = {} # lists of document texts
+    datasets: Dict[str, Path] = {}  # file paths
+    dfs: Dict[str, DataFrame] = {}  # DataFrames
+    docs_dict: Dict[str, List[str]] = {}  # lists of document texts
     failed: List[str] = []
 
     data_path = Path(data_path)
@@ -38,7 +37,7 @@ def process_datasets(
                 df = pd.read_csv(
                     file_path,
                     engine="python",
-                    on_bad_lines="skip", # maybe experiment with "warn"
+                    on_bad_lines="skip",  # maybe experiment with "warn"
                 )
 
             text_col = next((c for c in text_cols if c in df.columns), None)

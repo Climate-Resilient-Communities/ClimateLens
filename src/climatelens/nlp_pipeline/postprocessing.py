@@ -28,48 +28,52 @@ from climatelens.utils import create_directories
 
 
 def annotate_data(
-        dfs: Dict[str, pd.DataFrame],
-        name: str,
-        topics_dict: Dict[str, List[int]],
-        probs_dict: Dict[str, List[float]],
-        topic_info_dict:
-        Dict[str, pd.DataFrame]
-        ) -> None:
+    dfs: Dict[str, pd.DataFrame],
+    name: str,
+    topics_dict: Dict[str, List[int]],
+    probs_dict: Dict[str, List[float]],
+    topic_info_dict: Dict[str, pd.DataFrame],
+) -> None:
     dfs[name]["topic"] = topics_dict[name]
     dfs[name]["topic_proba"] = probs_dict[name]
 
     print(f"\nNumber of topics (including outlier): {len(topic_info_dict[name])}")
 
+
 def clean_dataframe_columns(df: pd.DataFrame, name: str) -> pd.DataFrame:
     # Remove large columns and existing merge columns to avoid duplicates
-    cols_to_remove = [col for col in df.columns if col.endswith('_x') or col.endswith('_y')]
+    cols_to_remove = [col for col in df.columns if col.endswith("_x") or col.endswith("_y")]
 
     # large columns
     large_cols = [
-        'Representation', 'Representative_Docs',
-        'Representation_core', 'Representative_Docs_core',
-        'Name', 'Name_core'
+        "Representation",
+        "Representative_Docs",
+        "Representation_core",
+        "Representative_Docs_core",
+        "Name",
+        "Name_core",
     ]
 
     cols_to_remove.extend([col for col in large_cols if col in df.columns])
 
-    topic_cols = [col for col in df.columns if col.startswith('Topic_')]
+    topic_cols = [col for col in df.columns if col.startswith("Topic_")]
     cols_to_remove.extend(topic_cols)
 
     if cols_to_remove:
         print(f"Removing {len(cols_to_remove)} duplicate/artifact columns from {name}")
 
-        df = df.drop(columns=cols_to_remove, errors='ignore')
+        df = df.drop(columns=cols_to_remove, errors="ignore")
 
     return df
 
 
 def process_topic_merges(
-        dfs: Dict[str, pd.DataFrame],
-        topic_info_dict: Dict[str, pd.DataFrame],
-        name: str, topic_col: str = "topic",
-        repr_docs_col: str = "Representative_Docs"
-        ) -> pd.DataFrame:
+    dfs: Dict[str, pd.DataFrame],
+    topic_info_dict: Dict[str, pd.DataFrame],
+    name: str,
+    topic_col: str = "topic",
+    repr_docs_col: str = "Representative_Docs",
+) -> pd.DataFrame:
     """
     Create representative flag WITHOUT merging large columns into main DF.
     """
@@ -101,11 +105,12 @@ def process_topic_merges(
 
 
 def process_core_topics(
-        dfs: Dict[str, pd.DataFrame],
-        name: str, core_topics_df: pd.DataFrame,
-        topics_dict: Dict[str, List[int]],
-        probs_dict: Dict[str, List[float]]
-        ) -> pd.DataFrame:
+    dfs: Dict[str, pd.DataFrame],
+    name: str,
+    core_topics_df: pd.DataFrame,
+    topics_dict: Dict[str, List[int]],
+    probs_dict: Dict[str, List[float]],
+) -> pd.DataFrame:
     """
     Add core topic info WITHOUT merging large columns into main DF.
     """
@@ -141,18 +146,22 @@ def finalize_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     No JSON files created - just clean the dataframe.
     """
     # Remove all _x, _y suffix columns
-    cols_to_remove = [col for col in df.columns if col.endswith('_x') or col.endswith('_y')]
+    cols_to_remove = [col for col in df.columns if col.endswith("_x") or col.endswith("_y")]
 
     # Remove large list columns
     large_cols = [
-        'Representation', 'Representative_Docs',
-        'Representation_core', 'Representative_Docs_core',
-        'Name', 'Name_core', 'Topic'
+        "Representation",
+        "Representative_Docs",
+        "Representation_core",
+        "Representative_Docs_core",
+        "Name",
+        "Name_core",
+        "Topic",
     ]
     cols_to_remove.extend([col for col in large_cols if col in df.columns])
 
     # Remove any columns that start with Topic_ (duplicate)
-    topic_cols = [col for col in df.columns if col.startswith('Topic_')]
+    topic_cols = [col for col in df.columns if col.startswith("Topic_")]
     cols_to_remove.extend(topic_cols)
 
     # Remove duplicates
@@ -160,7 +169,7 @@ def finalize_dataframe(df: pd.DataFrame) -> pd.DataFrame:
 
     if cols_to_remove:
         print(f"Removing {len(cols_to_remove)} duplicate/large columns")
-        df_clean = df.drop(columns=cols_to_remove, errors='ignore')
+        df_clean = df.drop(columns=cols_to_remove, errors="ignore")
     else:
         df_clean = df.copy()
 
@@ -184,10 +193,17 @@ def save_dataframe_inplace(path: Path, df: pd.DataFrame) -> bool:
         new_size = path.stat().st_size / (1024 * 1024)
 
         print(f"Saved to {path}")
-        print(f"  - Original size: {original_size:.2f} MB" if original_size else "  - New file created")
+        print(
+            f"  - Original size: {original_size:.2f} MB"
+            if original_size
+            else "  - New file created"
+        )
         print(f"  - New size: {new_size:.2f} MB")
-        print(f"  - Reduction: {(original_size - new_size):.2f} MB ({(1 - new_size/original_size)*100:.1f}% smaller)"
-              if original_size else "")
+        print(
+            f"  - Reduction: {(original_size - new_size):.2f} MB ({(1 - new_size / original_size) * 100:.1f}% smaller)"
+            if original_size
+            else ""
+        )
 
         return True
     except Exception as e:
@@ -207,12 +223,8 @@ def update_model(
 ) -> BERTopic:
     paths = create_directories(
         code_dir / "outputs",
-        [
-            "visualizations/IDM",
-            "visualizations/hierarchies",
-            "visualizations/barcharts"
-        ],
-        use_timestamp=True
+        ["visualizations/IDM", "visualizations/hierarchies", "visualizations/barcharts"],
+        use_timestamp=True,
     )
 
     IDM_dir = paths["visualizations/IDM"]

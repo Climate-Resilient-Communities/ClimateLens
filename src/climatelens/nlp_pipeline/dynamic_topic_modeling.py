@@ -90,7 +90,9 @@ def prepare_timestamps(dfs: Dict[str, DataFrame], name: str) -> Optional[List[pd
         return None
 
 
-def calculate_optimal_bins(timestamps: List[pd.Timestamp], min_bins: int = 10, max_bins: int = 50) -> int:
+def calculate_optimal_bins(
+    timestamps: List[pd.Timestamp], min_bins: int = 10, max_bins: int = 50
+) -> int:
     """
     Calculate optimal number of temporal bins based on data time span.
 
@@ -128,7 +130,7 @@ def perform_dynamic_topic_modeling(
     timestamps: List[pd.Timestamp],
     name: str,
     nr_bins: Optional[int] = None,
-    top_n_topics: int = 10
+    top_n_topics: int = 10,
 ) -> Tuple[Optional[pd.DataFrame], Optional[go.Figure]]:
     """
     Perform Dynamic Topic Modeling analysis using BERTopic's topics_over_time.
@@ -188,10 +190,7 @@ def perform_dynamic_topic_modeling(
 
 
 def save_dtm_outputs(
-    topics_over_time: pd.DataFrame,
-    fig: go.Figure,
-    name: str,
-    dtm_dir: Path
+    topics_over_time: pd.DataFrame, fig: go.Figure, name: str, dtm_dir: Path
 ) -> None:
     """
     Save DTM outputs: CSV data and HTML visualization.
@@ -226,7 +225,7 @@ def run_dynamic_topic_modeling(
     dfs: Dict[str, DataFrame],
     topic_models: Dict[str, BERTopic],
     docs_dict: Dict[str, List[str]],
-    dtm_dir: Path
+    dtm_dir: Path,
 ) -> None:
     print("\n" + "=" * 60)
     print("Starting Dynamic Topic Modeling:\n")
