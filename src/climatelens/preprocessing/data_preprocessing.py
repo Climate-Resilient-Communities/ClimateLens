@@ -28,10 +28,11 @@ if not data_path.exists() or not data_path.is_dir():
     raise NotADirectoryError(f"{data_path} is not a valid directory")
 data_path = Path(data_path)
 
-import nltk
 import pandas as pd
-from nltk.corpus import stopwords
-from nltk.tokenize import word_tokenize
+import spacy
+from spacy.lang.en.stop_words import STOP_WORDS
+
+nlp = spacy.load("en_core_web_sm")
 
 # Add src/ to sys.path so utils imports resolve when run as a script.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -180,9 +181,8 @@ MIN_DOCUMENT_WORDS = 3
 
 
 def build_custom_stopwords() -> set:
-    """Combine NLTK stopwords with project-specific additions."""
-    stop_words = set(stopwords.words("english"))
-    combined = stop_words.union(SWEAR_VARIANTS).union(ADDITIONAL_STOPWORDS)
+    """Combine spaCy stopwords with project-specific additions."""
+    combined = set(STOP_WORDS).union(SWEAR_VARIANTS).union(ADDITIONAL_STOPWORDS)
     return combined - PRESERVE_WORDS
 
 
@@ -230,8 +230,12 @@ def preprocess_text(text: str, custom_stopwords: set) -> str:
     text = _HTML_ENTITY_PATTERN.sub("", text)
     text = _URL_FRAGMENT_PATTERN.sub("", text)
 
-    tokens = word_tokenize(text.lower())
-    tokens = [t for t in tokens if t.isalpha() and t not in custom_stopwords]
+    doc = nlp(text)
+    tokens = [
+        token.lemma_.lower()
+        for token in doc
+        if token.is_alpha and token.lemma_.lower() not in custom_stopwords
+    ]
     tokens = remove_consecutive_repeats(tokens)
     return " ".join(tokens)
 
@@ -271,13 +275,6 @@ def remove_empty_posts():
 # =============================================================================
 # PIPELINE
 # =============================================================================
-
-
-def _ensure_nltk_resources() -> None:
-    """Download required NLTK corpora if not already present."""
-    log.info("ensuring NLTK resources are available")
-    for resource in ("stopwords", "punkt_tab", "punkt"):
-        nltk.download(resource, quiet=True)
 
 
 def preprocess_dataset(
@@ -336,7 +333,6 @@ def run_pipeline(
     ``specs`` lets tests inject a pre-built list; when ``None`` we read the
     YAML registry.
     """
-    _ensure_nltk_resources()
     custom_stopwords = build_custom_stopwords()
 
     dataset_specs = (

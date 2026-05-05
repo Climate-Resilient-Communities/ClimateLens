@@ -1,6 +1,7 @@
 import csv
 import json
 import os
+import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
@@ -42,11 +43,23 @@ search_terms = [
 
 
 def contains_keywords(text: Optional[str], keywords: List[str]) -> bool:
-    """Checks if any keyword appears in the given text."""
+    """Checks if any keyword appears in the given text.
+
+    Each keyword is tried as a case-insensitive regex pattern. If a keyword
+    is not a valid regex, plain case-insensitive substring matching is used
+    as a fallback, preserving backward compatibility with simple string terms.
+    """
     if not text:
         return False
     lower: str = text.lower()
-    return any(term in lower for term in keywords)
+    for term in keywords:
+        try:
+            if re.search(term, text, re.IGNORECASE):
+                return True
+        except re.error:
+            if term.lower() in lower:
+                return True
+    return False
 
 
 def peek_first_valid_line(file_path: Path) -> Optional[Dict[str, Any]]:
