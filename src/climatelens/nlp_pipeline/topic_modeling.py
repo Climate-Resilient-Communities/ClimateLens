@@ -2,17 +2,22 @@ import time
 import traceback
 import warnings
 from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
 
+import numpy as np
+import pandas as pd
 from bertopic import BERTopic
 from bertopic.representation import MaximalMarginalRelevance
 from hdbscan import HDBSCAN
+from numpy.typing import NDArray
+from sentence_transformers import SentenceTransformer
 from sklearn.feature_extraction.text import CountVectorizer
 from umap import UMAP
 
 warnings.filterwarnings("ignore")
 
 # Dataset-specific configs
-DATASET_PARAMS = {
+DATASET_PARAMS: Dict[str, Dict[str, Any]] = {
     "twitter": {
         "min_df": 0.05,
         "max_df": 0.90,
@@ -38,12 +43,14 @@ DATASET_PARAMS = {
         "min_cluster_size": 3,
         "min_samples": 3,
         "min_topic_size": 15,
-        "nr_topics": "auto",
+        "nr_topics": "auto", # experiment with nr_topics=params.get("nr_topics", "auto") for testing
     },  # fallback for visualization error (less than 4 topics)
 }
 
 
-def create_submodels(params=None):
+def create_submodels(
+        params: Optional[Dict[str, Any]] = None
+        ) -> Tuple[CountVectorizer, UMAP, HDBSCAN, MaximalMarginalRelevance]:
     params = params or {
         "min_df": 0.05,
         "max_df": 0.9,
@@ -97,7 +104,13 @@ def create_submodels(params=None):
     return vectorizer_model, umap_model, hdbscan_model, representation_model
 
 
-def bert_model(dataset_name, docs, embeddings, embedding_model, params=None):
+def bert_model(
+    dataset_name: str,
+    docs: List[str],
+    embeddings: Optional[NDArray[np.float32]],
+    embedding_model: SentenceTransformer,
+    params: Optional[Dict[str, Any]] = None
+) -> Tuple[Optional[BERTopic], Optional[List[int]], Optional[List[float]]]:
     if not docs:
         print(f"No docs provided for {dataset_name}. Skipping topic modeling.")
         return None, None, None
@@ -135,13 +148,17 @@ def bert_model(dataset_name, docs, embeddings, embedding_model, params=None):
         print(f"{dataset_name} topic modeling completed in {elapsed_seconds:.3f} seconds")
 
 
-def save_and_reload_model(name, model_dir, topic_models):
+def save_and_reload_model(
+    name: str,
+    model_dir: Path,
+    topic_models: Dict[str, BERTopic]
+) -> None:
     save_path = Path(model_dir) / f"{name}.safetensors"
     topic_models[name].save(str(save_path), serialization="safetensors")
     print(f"Model saved: {save_path}")
 
 
-def save_dataframe_inplace(path, df):
+def save_dataframe_inplace(path: Path, df: pd.DataFrame) -> None:
     try:
         df.to_csv(path, index=False)
         print(f"Saved updated dataframe back to {path}")

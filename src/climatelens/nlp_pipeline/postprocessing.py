@@ -15,21 +15,32 @@ topic_models[name] = update_model(
 
 import os
 from pathlib import Path
+from typing import Dict, List
 
+import pandas as pd
+from bertopic import BERTopic
 from dotenv import load_dotenv
 
 load_dotenv()
+code_dir: Path = Path(os.getenv("CODE_DIR"))
 
 from climatelens.utils import create_directories
 
 
-def annotate_data(dfs, name, topics_dict, probs_dict, topic_info_dict):
+def annotate_data(
+        dfs: Dict[str, pd.DataFrame],
+        name: str,
+        topics_dict: Dict[str, List[int]],
+        probs_dict: Dict[str, List[float]],
+        topic_info_dict:
+        Dict[str, pd.DataFrame]
+        ) -> None:
     dfs[name]["topic"] = topics_dict[name]
     dfs[name]["topic_proba"] = probs_dict[name]
 
     print(f"\nNumber of topics (including outlier): {len(topic_info_dict[name])}")
 
-def clean_dataframe_columns(df, name):
+def clean_dataframe_columns(df: pd.DataFrame, name: str) -> pd.DataFrame:
     # Remove large columns and existing merge columns to avoid duplicates
     cols_to_remove = [col for col in df.columns if col.endswith('_x') or col.endswith('_y')]
 
@@ -53,7 +64,12 @@ def clean_dataframe_columns(df, name):
     return df
 
 
-def process_topic_merges(dfs, topic_info_dict, name, topic_col="topic", repr_docs_col="Representative_Docs"):
+def process_topic_merges(
+        dfs: Dict[str, pd.DataFrame],
+        topic_info_dict: Dict[str, pd.DataFrame],
+        name: str, topic_col: str = "topic",
+        repr_docs_col: str = "Representative_Docs"
+        ) -> pd.DataFrame:
     """
     Create representative flag WITHOUT merging large columns into main DF.
     """
@@ -84,7 +100,12 @@ def process_topic_merges(dfs, topic_info_dict, name, topic_col="topic", repr_doc
     return dfs[name]
 
 
-def process_core_topics(dfs, name, core_topics_df, topics_dict, probs_dict):
+def process_core_topics(
+        dfs: Dict[str, pd.DataFrame],
+        name: str, core_topics_df: pd.DataFrame,
+        topics_dict: Dict[str, List[int]],
+        probs_dict: Dict[str, List[float]]
+        ) -> pd.DataFrame:
     """
     Add core topic info WITHOUT merging large columns into main DF.
     """
@@ -114,7 +135,7 @@ def process_core_topics(dfs, name, core_topics_df, topics_dict, probs_dict):
     return core_topics_df
 
 
-def finalize_dataframe(df):
+def finalize_dataframe(df: pd.DataFrame) -> pd.DataFrame:
     """
     Remove all duplicate and large columns from the main dataframe.
     No JSON files created - just clean the dataframe.
@@ -148,7 +169,7 @@ def finalize_dataframe(df):
     return df_clean
 
 
-def save_dataframe_inplace(path, df):
+def save_dataframe_inplace(path: Path, df: pd.DataFrame) -> bool:
     """
     Save dataframe after removing duplicate and large columns.
     """
@@ -175,17 +196,15 @@ def save_dataframe_inplace(path, df):
 
 
 def update_model(
-    name,
-    dfs,
-    topic_models,
-    docs_dict,
-    core_topics_dict,
-    topics_dict,
-    probs_dict,
-    nr_topics=30,
-):
-    # Create only the directories you need for visualizations
-    code_dir = Path(os.getenv("CODE_DIR", "."))
+    name: str,
+    dfs: Dict[str, pd.DataFrame],
+    topic_models: Dict[str, BERTopic],
+    docs_dict: Dict[str, List[str]],
+    core_topics_dict: Dict[str, pd.DataFrame],
+    topics_dict: Dict[str, List[int]],
+    probs_dict: Dict[str, List[float]],
+    nr_topics: int = 30,
+) -> BERTopic:
     paths = create_directories(
         code_dir / "outputs",
         [

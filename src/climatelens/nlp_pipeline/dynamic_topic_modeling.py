@@ -2,11 +2,15 @@
 import time
 import traceback
 from pathlib import Path
+from typing import Dict, List, Optional, Tuple
 
 import pandas as pd
+import plotly.graph_objects as go
+from bertopic import BERTopic
+from pandas import DataFrame
 
 
-def prepare_timestamps(dfs, name):
+def prepare_timestamps(dfs: Dict[str, DataFrame], name: str) -> Optional[List[pd.Timestamp]]:
     """
     Extract and validate timestamps from a dataset.
 
@@ -86,7 +90,7 @@ def prepare_timestamps(dfs, name):
         return None
 
 
-def calculate_optimal_bins(timestamps, min_bins=10, max_bins=50):
+def calculate_optimal_bins(timestamps: List[pd.Timestamp], min_bins: int = 10, max_bins: int = 50) -> int:
     """
     Calculate optimal number of temporal bins based on data time span.
 
@@ -119,8 +123,13 @@ def calculate_optimal_bins(timestamps, min_bins=10, max_bins=50):
 
 
 def perform_dynamic_topic_modeling(
-    topic_model, docs, timestamps, name, nr_bins=None, top_n_topics=10
-):
+    topic_model: BERTopic,
+    docs: List[str],
+    timestamps: List[pd.Timestamp],
+    name: str,
+    nr_bins: Optional[int] = None,
+    top_n_topics: int = 10
+) -> Tuple[Optional[pd.DataFrame], Optional[go.Figure]]:
     """
     Perform Dynamic Topic Modeling analysis using BERTopic's topics_over_time.
 
@@ -178,7 +187,12 @@ def perform_dynamic_topic_modeling(
         return None, None
 
 
-def save_dtm_outputs(topics_over_time, fig, name, dtm_dir):
+def save_dtm_outputs(
+    topics_over_time: pd.DataFrame,
+    fig: go.Figure,
+    name: str,
+    dtm_dir: Path
+) -> None:
     """
     Save DTM outputs: CSV data and HTML visualization.
 
@@ -208,7 +222,12 @@ def save_dtm_outputs(topics_over_time, fig, name, dtm_dir):
         traceback.print_exc()
 
 
-def run_dynamic_topic_modeling(dfs, topic_models, docs_dict, dtm_dir):
+def run_dynamic_topic_modeling(
+    dfs: Dict[str, DataFrame],
+    topic_models: Dict[str, BERTopic],
+    docs_dict: Dict[str, List[str]],
+    dtm_dir: Path
+) -> None:
     print("\n" + "=" * 60)
     print("Starting Dynamic Topic Modeling:\n")
     print("=" * 60)

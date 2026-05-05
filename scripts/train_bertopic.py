@@ -3,17 +3,8 @@ import traceback
 
 from dotenv import load_dotenv
 
-
-def load_environment():
-    load_dotenv()
-    data_dir, code_dir = os.getenv("DATA_DIR"), os.getenv("CODE_DIR")
-
-    if not data_dir or not code_dir:
-        raise EnvironmentError(
-            "DATA_DIR and CODE_DIR must be set in the .env file."
-        )
-    return data_dir, code_dir
-data_dir, code_dir = load_environment()
+load_dotenv()
+data_dir, code_dir = os.getenv("DATA_DIR"), os.getenv("CODE_DIR")
 
 from climatelens.nlp_pipeline import topic_modeling as tm
 from climatelens.utils import create_directories, process_datasets
@@ -86,7 +77,7 @@ def main():
             continue
         topic_info_dict[name] = topic_models[name].get_topic_info()
         annotate_data(
-            dfs, name, JUPYTER,
+            dfs, name,
             topics_dict, probs_dict, topic_info_dict=topic_info_dict
         )
         process_topic_merges(dfs, topic_info_dict, name)
