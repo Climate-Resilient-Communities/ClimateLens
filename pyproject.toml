@@ -69,8 +69,6 @@ target-version = ["py310"]
 line-length = 99
 target-version = "py310"
 extend-exclude = [
-    "src/LDA",
-    "khp_climate_anxiety",
     ".venv",
 ]
 
@@ -90,6 +88,25 @@ ignore = [
 
 [tool.ruff.lint.isort]
 known-first-party = ["utils"]
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = false
+warn_unused_configs = true
+ignore_missing_imports = true
+allow_untyped_defs = true
+allow_untyped_calls = true
+
+# Gradually tighten these as you annotate more
+check_untyped_defs = false
+disallow_any_unimported = false
+disallow_untyped_defs = false
+
+# Exclude problematic dirs
+exclude = [
+    "^build/",
+    "^dist/",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
