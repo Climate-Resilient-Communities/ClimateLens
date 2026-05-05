@@ -18,6 +18,8 @@ if IN_AZUREML:
     OUTPUT_DIR = "outputs/visualizations"
 
 # ENSURE DIRECTORIES EXIST
-Path(DATA_DIR).mkdir(parents=True, exist_ok=True) # can exist_ok work with mkdir()? according to docs, it should only be makedirs()
-Path(OUTPUT_DIR).mkdir(parents=True, exist_ok=True) #investigate this
+Path(DATA_DIR).mkdir(
+    parents=True, exist_ok=True
+)  # can exist_ok work with mkdir()? according to docs, it should only be makedirs()
+Path(OUTPUT_DIR).mkdir(parents=True, exist_ok=True)  # investigate this
 # https://docs.python.org/3/library/os.html#os.mkdir

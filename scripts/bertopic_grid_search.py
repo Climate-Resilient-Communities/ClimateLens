@@ -13,6 +13,7 @@ from dotenv import load_dotenv
 def load_environment():
     try:
         from google.colab import drive
+
         drive.mount("/content/drive")
         base = "/content/drive/MyDrive/ClimateLens/02 Code/02.01 MVP2/"
         env_path = Path(base) / "colab.env"
@@ -27,6 +28,7 @@ def load_environment():
 
 
 DATA_DIR, CODE_DIR = load_environment()
+
 
 def load_docs(data_dir, text_cols=("body", "text")):
     docs = {}
@@ -43,6 +45,8 @@ def load_docs(data_dir, text_cols=("body", "text")):
         print(f"Loaded {name}: {len(docs[name]):,} docs")
 
     return docs
+
+
 docs_dict = load_docs(DATA_DIR)
 
 from bertopic import BERTopic
@@ -53,11 +57,12 @@ from sklearn.feature_extraction.text import CountVectorizer
 from umap import UMAP
 
 EMBEDDING_MODELS = {
-    "minilm-L6": "sentence-transformers/all-MiniLM-L6-v2", #fastest
-    "minilm-L12": "sentence-transformers/all-MiniLM-L12-v2", #fast
-    #"distilroberta": "sentence-transformers/all-distilroberta-v1", #slow
-    #"all-mpnet-base-v2": "sentence-transformers/all-mpnet-base-v2", #slowest
+    "minilm-L6": "sentence-transformers/all-MiniLM-L6-v2",  # fastest
+    "minilm-L12": "sentence-transformers/all-MiniLM-L12-v2",  # fast
+    # "distilroberta": "sentence-transformers/all-distilroberta-v1", #slow
+    # "all-mpnet-base-v2": "sentence-transformers/all-mpnet-base-v2", #slowest
 }
+
 
 def compute_all_embeddings(docs_dict, embedding_models):
     embeddings = {}
@@ -74,6 +79,7 @@ def compute_all_embeddings(docs_dict, embedding_models):
             embeddings[(dataset, emb_name)] = emb
 
     return embeddings
+
 
 embeddings_dict = compute_all_embeddings(docs_dict, EMBEDDING_MODELS)
 
@@ -97,6 +103,7 @@ FIXED_PARAMS = {
     "top_n_words": 10,
     "ngram_range": (2, 3),
 }
+
 
 def run_experiment(
     docs,
@@ -165,6 +172,7 @@ def run_experiment(
         **bertopic_params,
     }
 
+
 def grid_search(docs_dict, embeddings_dict, output_dir):
     results = []
 
@@ -172,43 +180,43 @@ def grid_search(docs_dict, embeddings_dict, output_dir):
         print(f"\nDataset: {dataset} | Sampled: {len(docs):,}")
 
         for emb_name, emb_path in EMBEDDING_MODELS.items():
-          embeddings = embeddings_dict[(dataset, emb_name)]
-          print(f"\nEmbedding model: {emb_name}")
-          #embeddings = compute_embeddings(emb_path, docs)
+            embeddings = embeddings_dict[(dataset, emb_name)]
+            print(f"\nEmbedding model: {emb_name}")
+            # embeddings = compute_embeddings(emb_path, docs)
 
-          for umap_vals in product(*UMAP_GRID.values()):
-              umap_params = dict(zip(UMAP_GRID.keys(), umap_vals))
+            for umap_vals in product(*UMAP_GRID.values()):
+                umap_params = dict(zip(UMAP_GRID.keys(), umap_vals))
 
-              for hdb_vals in product(*HDBSCAN_GRID.values()):
-                  hdb_params = dict(zip(HDBSCAN_GRID.keys(), hdb_vals))
+                for hdb_vals in product(*HDBSCAN_GRID.values()):
+                    hdb_params = dict(zip(HDBSCAN_GRID.keys(), hdb_vals))
 
-                  for bert_vals in product(*BERTOPIC_GRID.values()):
-                      bert_params = dict(zip(BERTOPIC_GRID.keys(), bert_vals))
+                    for bert_vals in product(*BERTOPIC_GRID.values()):
+                        bert_params = dict(zip(BERTOPIC_GRID.keys(), bert_vals))
 
-                      # Constraint: min_topic_size >= min_cluster_size
-                      if bert_params["min_topic_size"] < hdb_params["min_cluster_size"]:
-                          continue
+                        # Constraint: min_topic_size >= min_cluster_size
+                        if bert_params["min_topic_size"] < hdb_params["min_cluster_size"]:
+                            continue
 
-                      try:
-                          print(
-                              f"COMPUTING: UMAP={umap_params} | "
-                              f"HDB={hdb_params} | "
-                              f"BERT={bert_params}"
-                          )
+                        try:
+                            print(
+                                f"COMPUTING: UMAP={umap_params} | "
+                                f"HDB={hdb_params} | "
+                                f"BERT={bert_params}"
+                            )
 
-                          res = run_experiment(
-                              docs,
-                              embeddings,
-                              emb_name,
-                              dataset,
-                              umap_params,
-                              hdb_params,
-                              bert_params,
-                          )
-                          results.append(res)
+                            res = run_experiment(
+                                docs,
+                                embeddings,
+                                emb_name,
+                                dataset,
+                                umap_params,
+                                hdb_params,
+                                bert_params,
+                            )
+                            results.append(res)
 
-                      except Exception:
-                          traceback.print_exc()
+                        except Exception:
+                            traceback.print_exc()
 
     df = pd.DataFrame(results)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -220,11 +228,14 @@ def grid_search(docs_dict, embeddings_dict, output_dir):
     print(f"\nSaved results to: {out_path}")
     return df, embeddings_dict, out_path, res
 
+
 if __name__ == "__main__":
     docs_dict = load_docs(DATA_DIR)
 
     testing_dir = Path(CODE_DIR) / "testing" / "topic_modeling"
-    results_df, embeddings_dict, out_path, res = grid_search(docs_dict, embeddings_dict, testing_dir)
+    results_df, embeddings_dict, out_path, res = grid_search(
+        docs_dict, embeddings_dict, testing_dir
+    )
 
     print("\nTop candidates:")
     print(
@@ -237,14 +248,11 @@ if __name__ == "__main__":
 results = pd.read_csv(out_path)
 
 results[
-    (results["outlier_frac"] > 0.12) &
-    (results["outlier_frac"] < 0.25) &
-    (results["n_topics"]>2)
-].drop(
-    columns=["topic_model", "mmr_diversity", "mmr_value"]
-).sort_values(
+    (results["outlier_frac"] > 0.12) & (results["outlier_frac"] < 0.25) & (results["n_topics"] > 2)
+].drop(columns=["topic_model", "mmr_diversity", "mmr_value"]).sort_values(
     by="outlier_frac", ascending=True
 )
+
 
 def plot_barchart_from_results(
     results_df,
@@ -253,7 +261,7 @@ def plot_barchart_from_results(
     n_words=10,
     width=2000,
     height=1200,
-    title_prefix="BERTopic barchart"
+    title_prefix="BERTopic barchart",
 ):
     """
     model_selector:
@@ -287,10 +295,7 @@ def plot_barchart_from_results(
 
     topic_model = row["topic_model"]
 
-    fig = topic_model.visualize_barchart(
-        top_n_topics=top_n_topics,
-        n_words=n_words
-    )
+    fig = topic_model.visualize_barchart(top_n_topics=top_n_topics, n_words=n_words)
 
     fig.update_layout(
         width=width,
@@ -301,13 +306,11 @@ def plot_barchart_from_results(
             f"Embedding={row['embedding_model']} | "
             f"Topics={row['n_topics']} | "
             f"Outliers={row['outlier_frac']}"
-        )
+        ),
     )
 
     return fig
 
-fig = plot_barchart_from_results(
-    results_df,
-    model_selector=1
-)
-#display(fig) # uncomment if in jupyernotebook
+
+fig = plot_barchart_from_results(results_df, model_selector=1)
+# display(fig) # uncomment if in jupyernotebook

@@ -76,10 +76,7 @@ def main():
             print(f"Skipping post-processing for {name} since there's no topic model")
             continue
         topic_info_dict[name] = topic_models[name].get_topic_info()
-        annotate_data(
-            dfs, name,
-            topics_dict, probs_dict, topic_info_dict=topic_info_dict
-        )
+        annotate_data(dfs, name, topics_dict, probs_dict, topic_info_dict=topic_info_dict)
         process_topic_merges(dfs, topic_info_dict, name)
 
     # Update models and generate static visualizations
@@ -139,10 +136,7 @@ def main():
     # Running dtm
     try:
         run_dynamic_topic_modeling(
-            dfs=dfs,
-            topic_models=topic_models,
-            docs_dict=docs_dict,
-            dtm_dir=dtm_dir
+            dfs=dfs, topic_models=topic_models, docs_dict=docs_dict, dtm_dir=dtm_dir
         )
     except Exception as e:
         print(f"DTM stage failed: {e}")
@@ -151,6 +145,7 @@ def main():
     print("\n" + "=" * 60)
     print("Pipeline finished successfully.")
     print("=" * 60)
+
 
 if __name__ == "__main__":
     try:

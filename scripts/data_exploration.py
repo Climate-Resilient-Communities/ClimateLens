@@ -30,11 +30,12 @@ def analyze_jsonl_file(filepath):
         "file": os.path.basename(filepath),
         "type": "jsonl",
         "rows": row_count,
-        "size_mb": round(file_size / (1024 ** 2), 2),
+        "size_mb": round(file_size / (1024**2), 2),
         "avg_row_bytes": round(avg_row_size, 2),
         "num_columns_or_keys": len(keys),
         "malformed_lines": bad_lines,
     }
+
 
 def analyze_csv_file(filepath):
     file_size = os.path.getsize(filepath)
@@ -92,7 +93,7 @@ def analyze_csv_file(filepath):
         "file": os.path.basename(filepath),
         "type": "csv",
         "rows": row_count,
-        "size_mb": round(file_size / (1024 ** 2), 2),
+        "size_mb": round(file_size / (1024**2), 2),
         "avg_row_bytes": round(avg_row_size, 2),
         "num_columns_or_keys": num_columns,
         "avg_post_chars": round(avg_chars, 2),
@@ -101,6 +102,7 @@ def analyze_csv_file(filepath):
         "empty_post_pct": round(empty_pct, 2),
         "malformed_lines": 0,
     }
+
 
 def analyze_jsonl_directory(directory):
     results = []
@@ -120,6 +122,7 @@ def analyze_csv_directory(directory):
             if result is not None:
                 results.append(result)
     return results
+
 
 def write_log(results, log_path):
     jsonl_files = [r for r in results if r["type"] == "jsonl"]
@@ -159,6 +162,7 @@ def write_log(results, log_path):
                 f.write(f"Empty Post %: {r['empty_post_pct']}\n")
                 f.write("\n")
 
+
 def write_csv_summary(results, csv_path):
     if not results:
         return
@@ -169,6 +173,7 @@ def write_csv_summary(results, csv_path):
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerows(results)
+
 
 if __name__ == "__main__":
     jsonl_directory = "path_to_jsonl_directory"
