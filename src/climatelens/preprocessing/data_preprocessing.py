@@ -12,21 +12,10 @@ Usage::
 
 from __future__ import annotations
 
-import os
 import re
 import sys
 from pathlib import Path
 from typing import Iterable, List, Optional
-
-from dotenv import load_dotenv
-
-load_dotenv()
-data_path = os.getenv("data_path")
-if not data_path:
-    raise EnvironmentError("data_path must be set in the .env file.")
-if not data_path.exists() or not data_path.is_dir():
-    raise NotADirectoryError(f"{data_path} is not a valid directory")
-data_path = Path(data_path)
 
 import pandas as pd
 import spacy
@@ -41,11 +30,8 @@ from utils.datasets import DatasetSpec, discover_datasets  # noqa: E402
 from utils.io_helpers import drop_missing_text, safe_write_csv  # noqa: E402
 from utils.logging_config import get_logger  # noqa: E402
 
-# from climatelens.preprocessing import datasets
 from utils.process_datasets import process_datasets
 from utils.runtime import load_runtime  # noqa: E402
-
-_, _, datasets = process_datasets()
 
 log = get_logger(__name__)
 
@@ -240,13 +226,12 @@ def preprocess_text(text: str, custom_stopwords: set) -> str:
     return " ".join(tokens)
 
 
-def remove_empty_posts():
+def remove_empty_posts(data_path: Path) -> None:
     for csv_path in data_path.glob("*.csv"):
         print(f"\nProcessing: {csv_path.name}")
 
         df = pd.read_csv(csv_path)
 
-        # Choose text column
         if "body" in df.columns:
             text_col = "body"
         elif "text" in df.columns:
@@ -334,6 +319,7 @@ def run_pipeline(
     YAML registry.
     """
     custom_stopwords = build_custom_stopwords()
+    _, _, datasets = process_datasets()
 
     dataset_specs = (
         list(specs) if specs is not None else discover_datasets(data_path, registry_path)
@@ -350,40 +336,20 @@ def run_pipeline(
     for key, value in datasets.items():
         print(f"  {key}: {value}")
 
-    # Load datasets
-    dfs = process_datasets(datasets)  # check if these are equivalent
-    # dfs = loading_datasets(datasets)
+    dfs = process_datasets(datasets)
     print(f"\n{len(dfs)} dataframes loaded successfully\n")
 
-    # Process each dataset
     for name, df in dfs.items():
         print(f"Processing dataset: {name}")
 
-        # Identify text column
         text_col = "body" if "body" in df.columns else "text"
 
-        # Preview issues (optional debugging)
-        # samples = []
-        # for idx, row in df.head(10).iterrows():
-        #     text = str(row[text_col])
-        #     repeated, slang = highlight_issues(text)
-        #     samples.append({
-        #         "original_text": text,
-        #         "repeated_words": repeated,
-        #         "slang_terms": slang
-        #     })
-        # peek_df = pd.DataFrame(samples)
-        # print(peek_df)
-
-        # Apply preprocessing
         df["cleaned_text"] = (
             df[text_col].astype(str).apply(lambda x: preprocess_text(x, custom_stopwords))
         )
 
-        # Filter out documents that are too short (< 3 words)
         df = df[df["cleaned_text"].str.split().str.len() >= 3]
 
-        # Save cleaned dataset
         df.to_csv(datasets[name], index=False)
         print(f"{name} cleaning complete! ({len(df)} documents retained)\n")
 
