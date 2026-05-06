@@ -315,7 +315,7 @@ def run_pipeline(
     YAML registry.
     """
     custom_stopwords = build_custom_stopwords()
-    _, _, datasets = process_datasets(data_path)
+    dfs, _, datasets = process_datasets(data_path)
 
     dataset_specs = (
         list(specs) if specs is not None else discover_datasets(data_path, registry_path)
@@ -332,7 +332,6 @@ def run_pipeline(
     for key, value in datasets.items():
         print(f"  {key}: {value}")
 
-    dfs = process_datasets(datasets)
     print(f"\n{len(dfs)} dataframes loaded successfully\n")
 
     for name, df in dfs.items():
