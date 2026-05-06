@@ -315,7 +315,7 @@ def run_pipeline(
     YAML registry.
     """
     custom_stopwords = build_custom_stopwords()
-    _, _, datasets = process_datasets()
+    _, _, datasets = process_datasets(data_path)
 
     dataset_specs = (
         list(specs) if specs is not None else discover_datasets(data_path, registry_path)
