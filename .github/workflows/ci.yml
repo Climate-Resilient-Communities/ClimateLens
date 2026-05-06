@@ -38,7 +38,11 @@ jobs:
             pyyaml==6.0.2 \
             nltk==3.9.1 \
             pytest==8.3.3 \
-            ruff==0.6.9
+            ruff==0.6.9 \
+            "spacy>=3.7.0,<4.0.0"
+
+      - name: Download spaCy model
+        run: python -m spacy download en_core_web_sm
 
       - name: Ruff (lint)
         run: ruff check src tests
