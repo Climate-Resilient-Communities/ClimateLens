@@ -8,7 +8,6 @@ from sentence_transformers import SentenceTransformer
 def compute_embeddings(
     docs_dict: Dict[str, List[str]],
 ) -> Tuple[Dict[str, NDArray[np.float32]], Dict[str, SentenceTransformer]]:
-
     DEFAULT_EMBEDDING_MODEL = "sentence-transformers/all-MiniLM-L12-v2"
 
     embeddings_dict: Dict[str, NDArray[np.float32]] = {}
