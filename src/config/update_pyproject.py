@@ -65,9 +65,9 @@ def main():
 
     print("Adding missing dependencies:", missing)
 
-    #updated = update_pyproject(data, missing)
+    # updated = update_pyproject(data, missing)
 
-    #with open(PYPROJECT_FILE, "wb") as f:
+    # with open(PYPROJECT_FILE, "wb") as f:
     #    tomli_w.dump(updated, f)
 
 
