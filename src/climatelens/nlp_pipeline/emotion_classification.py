@@ -155,7 +155,7 @@ def _process_one(spec: DatasetSpec, models: Dict[str, object]) -> Optional[pd.Da
         return emotion_analysis(df, analyzer, text_col=text_col, multi=False)
 
 
-def main() -> int:
+def run_emotion_pipeline() -> int:
     runtime = load_runtime()
     log.info("emotion classification starting")
     log.info("paths:\n%s", runtime.describe())
@@ -207,11 +207,3 @@ def main() -> int:
             except Exception:
                 log.exception("visualization failed for %s", name)
     return 0
-
-
-if __name__ == "__main__":
-    try:
-        sys.exit(main() or 0)
-    except Exception:
-        log.exception("unhandled exception in emotion classification pipeline")
-        raise
