@@ -23,7 +23,6 @@ from spacy.lang.en.stop_words import STOP_WORDS
 
 from climatelens.utils.io_helpers import drop_missing_text, safe_write_csv
 from climatelens.utils.logging_config import get_logger
-from climatelens.utils.process_datasets import process_datasets
 from climatelens.utils.runtime import load_runtime
 from config.dataset_registry import DatasetSpec, discover_datasets
 
@@ -315,7 +314,6 @@ def run_pipeline(
     YAML registry.
     """
     custom_stopwords = build_custom_stopwords()
-    dfs, _, datasets = process_datasets(data_path)
 
     dataset_specs = (
         list(specs) if specs is not None else discover_datasets(data_path, registry_path)
@@ -323,30 +321,6 @@ def run_pipeline(
     if not dataset_specs:
         log.warning("no datasets matched the registry in %s", data_path)
         return []
-
-    if not datasets:
-        print(f"No datasets found in {data_path}")
-        return
-
-    print("\nCollected Datasets:")
-    for key, value in datasets.items():
-        print(f"  {key}: {value}")
-
-    print(f"\n{len(dfs)} dataframes loaded successfully\n")
-
-    for name, df in dfs.items():
-        print(f"Processing dataset: {name}")
-
-        text_col = "body" if "body" in df.columns else "text"
-
-        df["cleaned_text"] = (
-            df[text_col].astype(str).apply(lambda x: preprocess_text(x, custom_stopwords))
-        )
-
-        df = df[df["cleaned_text"].str.split().str.len() >= 3]
-
-        df.to_csv(datasets[name], index=False)
-        print(f"{name} cleaning complete! ({len(df)} documents retained)\n")
 
     log.info("preprocessing %d datasets", len(dataset_specs))
     written: List[Path] = []
