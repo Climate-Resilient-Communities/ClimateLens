@@ -87,7 +87,7 @@ ignore = [
 "tests/*" = ["F401", "F811"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["utils"]
+known-first-party = ["climatelens"]
 
 [tool.mypy]
 python_version = "3.10"
@@ -112,3 +112,4 @@ exclude = [
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 addopts = "-ra"
+pythonpath = ["src"]

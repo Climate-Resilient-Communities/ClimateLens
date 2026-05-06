@@ -21,16 +21,13 @@ import pandas as pd
 import spacy
 from spacy.lang.en.stop_words import STOP_WORDS
 
+from climatelens.utils.datasets import DatasetSpec, discover_datasets
+from climatelens.utils.io_helpers import drop_missing_text, safe_write_csv
+from climatelens.utils.logging_config import get_logger
+from climatelens.utils.process_datasets import process_datasets
+from climatelens.utils.runtime import load_runtime
+
 nlp = spacy.load("en_core_web_sm")
-
-# Add src/ to sys.path so utils imports resolve when run as a script.
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-
-from utils.datasets import DatasetSpec, discover_datasets  # noqa: E402
-from utils.io_helpers import drop_missing_text, safe_write_csv  # noqa: E402
-from utils.logging_config import get_logger  # noqa: E402
-from utils.process_datasets import process_datasets
-from utils.runtime import load_runtime  # noqa: E402
 
 log = get_logger(__name__)
 
