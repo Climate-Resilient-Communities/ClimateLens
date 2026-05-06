@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from config import dataset_registry
+from src.config import dataset_registry
 
 
 def _write_registry(path: Path, entries):
