@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from dotenv import load_dotenv
+from tqdm import tqdm
 
 load_dotenv()
 data_dir: Optional[str] = os.getenv("DATA_DIR")
@@ -99,7 +100,7 @@ def process_reddit_file(
         writer.writeheader()
 
         with open(input_path, "r", encoding="utf-8") as f:
-            for line in f:
+            for line in tqdm(f, desc=input_path.name, unit=" lines", leave=False):
                 try:
                     entry: Dict[str, Any] = json.loads(line)
                     text: Optional[str] = extract_text_from_entry(entry, is_comment)
@@ -125,21 +126,16 @@ def process_all_reddit_files(
     """Batch process all JSONL files in a folder."""
     output_folder.mkdir(exist_ok=True)
 
-    # Iterating over all .jsonl files in input folder
-    for file in os.listdir(input_folder):
-        if not file.endswith(".jsonl"):
-            continue
-
+    jsonl_files = [f for f in os.listdir(input_folder) if f.endswith(".jsonl")]
+    for file in tqdm(jsonl_files, desc="Processing Reddit files", unit="file"):
         input_path: Path = input_folder / file
 
-        # Peek at first valid line
         first_valid_line: Optional[Dict[str, Any]] = peek_first_valid_line(input_path)
 
         if not first_valid_line:
             print(f"Skipping unreadable or empty file: {file}")
             continue
 
-        # Determine file type
         is_comment: bool
         type_tag: str
         is_comment, type_tag = determine_file_type(first_valid_line)

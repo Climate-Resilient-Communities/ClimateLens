@@ -103,22 +103,17 @@ def convert_jsonl_to_csv(input_path: str, output_path: str, fieldnames: List[str
 def process_twitter_data(
     input_path: str, output_path: str, desired_columns: Optional[List[str]] = None
 ) -> DataFrame:
-    # Process Twitter JSONL data and save as CSV.
-
-    if desired_columns is None:  # columns we want to keep for analysis
+    if desired_columns is None:
         desired_columns = ["created_at", "text"]
 
-    # Preview and display column info
     preview_rows = preview_jsonl(input_path)
     df_preview = DataFrame(preview_rows)
 
     print("Preview columns:", df_preview.columns.tolist())
     print(f"\nSample of {desired_columns[0]} and {desired_columns[1]}:")
 
-    # Convert full file
     convert_jsonl_to_csv(input_path, output_path, desired_columns)
 
-    # Load and display final info
     df_full = pd.read_csv(output_path)
     print("\nTwitter dataframe information:")
     print(df_full.info())
@@ -127,10 +122,10 @@ def process_twitter_data(
 
 
 def process_twitter_data_main() -> DataFrame:
-    input_path = Path(twitter_raw_dir) / "climate.jsonl"  # raw NDJSON Twitter file
-    output_path = Path(data_dir) / "twitter_climate_clean.csv"  # cleaned CSV file
+    input_path = Path(twitter_raw_dir) / "climate.jsonl"  # Raw NDJSON Twitter file
+    output_path = Path(data_dir) / "twitter_climate_clean.csv"  # Cleaned CSV file
 
-    df = process_twitter_data(input_path, output_path)  # Process data
+    df = process_twitter_data(input_path, output_path)
 
     if len(df) >= 5:
         print("\nRandom sample (5 rows):")
@@ -168,7 +163,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    # Choose which main to run
-    # For CLI tool: raise SystemExit(main())
-    # For Twitter processing: df = process_twitter_data_main()
     df = process_twitter_data_main()
