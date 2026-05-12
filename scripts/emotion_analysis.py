@@ -5,7 +5,9 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from climatelens.nlp_pipeline.emotion_classification import run_emotion_pipeline
-from climatelens.visualizations.emotion_visualization import run_pipeline as run_visualization_pipeline
+from climatelens.visualizations.emotion_visualization import (
+    run_pipeline as run_visualization_pipeline,
+)
 
 
 def main():
