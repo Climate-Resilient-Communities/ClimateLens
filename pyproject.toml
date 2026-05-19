@@ -5,6 +5,7 @@
 # linters, and test runners. Removing the legacy flit/[project] block lets
 # `pip install -r requirements.txt` succeed without a package skeleton.
 
+[project]
 name = "climatelens"
 version = "0.2.0"
 
@@ -42,7 +43,6 @@ dependencies = [
     "emoji==0.6.0",
     "nltk==3.9.0",
     "spacy>=3.7.0,<4.0.0",
-    "en_core_web_sm @ https://github.com",
     
     # Visualization
     "matplotlib==3.10.5",

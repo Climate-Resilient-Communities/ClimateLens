@@ -91,7 +91,11 @@ If you prefer manual installation:
 pip install -e .
 ```
 
-Editable installs allow you to modify the source code without reinstalling the package.
+Editable installs allow you to modify the source code without reinstalling the package. Dependencies can be found in `pyproject.toml`, but you can create a requirements.txt file by using the command below
+
+```
+python -c "import tomllib; f=open('pyproject.toml','rb'); data=tomllib.load(f); print('\n'.join(data['project']['dependencies']))" > requirements.txt
+```
 
 
 ## 4. Verify installation
