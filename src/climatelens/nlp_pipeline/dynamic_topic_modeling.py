@@ -1,6 +1,5 @@
 # Original Author: Ardavan Shahrabi
 import time
-import traceback
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -86,7 +85,6 @@ def prepare_timestamps(dfs: Dict[str, DataFrame], name: str) -> Optional[List[pd
 
     except Exception as e:
         print(f"Error parsing timestamps for {name}: {e}")
-        traceback.print_exc()
         return None
 
 
@@ -185,7 +183,6 @@ def perform_dynamic_topic_modeling(
 
     except Exception as e:
         print(f"Error during DTM for {name}: {e}")
-        traceback.print_exc()
         return None, None
 
 
@@ -218,7 +215,6 @@ def save_dtm_outputs(
 
     except Exception as e:
         print(f"Error saving DTM outputs for {name}: {e}")
-        traceback.print_exc()
 
 
 def run_dynamic_topic_modeling(
@@ -264,7 +260,6 @@ def run_dynamic_topic_modeling(
 
         except Exception as e:
             print(f"DTM failed for {name}: {e}")
-            traceback.print_exc()
             continue
 
     print("\n" + "=" * 60)

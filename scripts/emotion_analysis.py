@@ -1,5 +1,3 @@
-import traceback
-
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -16,16 +14,14 @@ def main():
     try:
         run_emotion_pipeline()
     except Exception:
-        print("Exception in emotion pipeline:")
-        traceback.print_exc()
+        print(f"Exception in emotion pipeline: {Exception}")
 
     print("Starting Emotion Visualization")
 
     try:
         run_visualization_pipeline()
     except Exception:
-        print("Exception in visualization pipeline:")
-        traceback.print_exc()
+        print(f"Exception in visualization pipeline: {Exception}")
 
     print("Done.")
 

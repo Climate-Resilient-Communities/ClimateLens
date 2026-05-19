@@ -1,7 +1,6 @@
 import os
 import re
 import time
-import traceback
 from datetime import datetime
 from itertools import product
 from pathlib import Path
@@ -216,7 +215,7 @@ def grid_search(docs_dict, embeddings_dict, output_dir):
                             results.append(res)
 
                         except Exception:
-                            traceback.print_exc()
+                            print(f"Exception: {Exception}")
 
     df = pd.DataFrame(results)
     output_dir.mkdir(parents=True, exist_ok=True)

@@ -1,5 +1,4 @@
 import time
-import traceback
 import warnings
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -140,7 +139,6 @@ def bert_model(
         return None, None, None
     except Exception as e:
         print(f"Error during {dataset_name} topic modeling: {e}")
-        traceback.print_exc()
         return None, None, None
     finally:
         end_time = time.time()

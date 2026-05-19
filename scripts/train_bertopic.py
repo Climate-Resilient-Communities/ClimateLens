@@ -1,5 +1,4 @@
 import os
-import traceback
 
 from dotenv import load_dotenv
 
@@ -102,7 +101,6 @@ def main():
             if "After pruning, no terms remain" not in str(e):
                 # if it's unexpected, log and continue (don't kill entire pipeline)
                 print(f"Unexpected ValueError when updating {name}: {e}")
-                traceback.print_exc()
                 continue
 
             print(f"Using smaller reddit parameters for {name}\n")
@@ -124,12 +122,10 @@ def main():
                 save_model(name, model_dir, topic_models)
             except Exception:
                 print(f"Failed updating {name} even with smaller params; skipping.")
-                traceback.print_exc()
                 continue
 
         except Exception as e:
             print(f"Unexpected error when updating model {name}: {e}")
-            traceback.print_exc()
             # continue to next dataset instead of aborting the whole pipeline
             continue
 
@@ -140,7 +136,6 @@ def main():
         )
     except Exception as e:
         print(f"DTM stage failed: {e}")
-        traceback.print_exc()
 
     print("\n" + "=" * 60)
     print("Pipeline finished successfully.")
@@ -150,7 +145,6 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except Exception:
-        print("Exception in pipeline:")
-        traceback.print_exc()
+    except Exception as e:
+        print(f"Exception in pipeline: {e}")
         pass
