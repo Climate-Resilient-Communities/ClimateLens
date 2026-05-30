@@ -24,9 +24,9 @@ import joblib  # saving/loading models
 
 ### Topic modeling, preprocessing, etc.
 import nltk
-
-# !pip install numpy==1.23.5 gensim==4.3.3
 import pandas as pd
+import pyLDAvis
+import pyLDAvis.lda_model
 
 nltk.download("wordnet")
 nltk.download("stopwords")
@@ -34,7 +34,7 @@ nltk.download("stopwords")
 from lda_model import Evaluate, best_model
 from visualization import hierarchy, visualize_topics
 
-names = None  # EDIT
+names = ["Reddit", "Twitter"]
 
 # add scripts directory to path
 sys.path.insert(1, "../scripts/")
@@ -77,19 +77,6 @@ reddit_coherence_score, reddit_perplexity, reddit_topic_distribution = Evaluate(
     best_reddit_model, processed_info, X_reddit, reddit_terms
 )
 
-import sys
-
-import joblib
-import pyLDAvis  # notebooks
-import pyLDAvis.lda_model  # communicate with sklearn
-
-# add scripts directory to path
-sys.path.insert(1, "../scripts/")
-
-best_reddit_model = joblib.load(
-    "/content/drive/My Drive/Notebooks/LDA Topic Modeling/Models/LDA_reddit_model.pkl"
-)
-
 reddit_data = visualize_topics(
     best_reddit_model, reddit_topic_distribution, X_reddit, reddit_countvec
 )
@@ -104,7 +91,6 @@ pyLDAvis.save_html(reddit_data, reddit_vis_path)
 
 # Call the function to perform clustering and generate the dendrogram
 agg_clustering_model_reddit = hierarchy(
-    best_reddit_model,
     reddit_topic_distribution,
     dataset_name=names[0],
     n_clusters=None,
@@ -135,10 +121,6 @@ twitter_coherence_score, twitter_perplexity, twitter_topic_distribution = Evalua
     best_twitter_model, processed_info, X_twitter, twitter_terms
 )
 
-best_twitter_model = joblib.load(
-    "/content/drive/My Drive/Notebooks/LDA Topic Modeling/LDA_twitter_model.pkl"
-)
-
 twitter_data = visualize_topics(
     best_twitter_model, twitter_topic_distribution, X_twitter, twitter_countvec
 )
@@ -152,7 +134,6 @@ twitter_vis_path = (
 pyLDAvis.save_html(twitter_data, twitter_vis_path)
 
 agg_clustering_model_twitter = hierarchy(
-    best_twitter_model,
     twitter_topic_distribution,
     dataset_name=names[1],
     n_clusters=None,
