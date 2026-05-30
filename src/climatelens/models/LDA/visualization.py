@@ -76,9 +76,7 @@ def generate_word_cloud(
     top_words: list[str] = []
     for topic in model.components_:
         top_words += [terms[i] for i in topic.argsort()[: -top_n - 1 : -1]]
-    return WordCloud(width=800, height=400, background_color="white").generate(
-        " ".join(top_words)
-    )
+    return WordCloud(width=800, height=400, background_color="white").generate(" ".join(top_words))
 
 
 def plot_topic_word_distributions(
@@ -127,11 +125,15 @@ def plot_coherence_perplexity(
     plt.ylabel("Perplexity")
     plt.title("Coherence & Perplexity of Reddit and Twitter LDA Models")
     plt.scatter(
-        [], [], color="r",
+        [],
+        [],
+        color="r",
         label=f"Reddit: Coherence={coherence[0]:.2f}, Perplexity={int(perplexity[0])}",
     )
     plt.scatter(
-        [], [], color="b",
+        [],
+        [],
+        color="b",
         label=f"Twitter: Coherence={coherence[1]:.2f}, Perplexity={int(perplexity[1])}",
     )
     plt.legend(loc="upper center", bbox_to_anchor=(0.5, -0.1), ncol=1)
