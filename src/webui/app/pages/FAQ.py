@@ -19,7 +19,9 @@ with st.expander("Will this replace counselors?"):
     """)
 
 with st.expander("If it doesn't flag individuals, what does a counselor actually see?"):
-    st.write("""A visual dashboard of aggregate themes and interpretable signals (e.g., prevalent concerns, representative phrases), with an interface to explore how a prediction was made; KHP designs the human intervention guidance that sits beside these insights.""")
+    st.write(
+        """A visual dashboard of aggregate themes and interpretable signals (e.g., prevalent concerns, representative phrases), with an interface to explore how a prediction was made; KHP designs the human intervention guidance that sits beside these insights."""
+    )
 
 with st.expander("What counts as a 'good' model here?"):
     st.write("""Not just accuracy. We'll judge success on:
@@ -32,7 +34,9 @@ with st.expander("Where does the data come from and do youth consent?"):
     st.write("""Phase I uses open-source, climate-related text.
 Phase II contemplates anonymized/de-identified Kids Help Phone transcripts that are used only after de-identification and governance review.""")
 
-with st.expander("How do you keep the system from drifting or getting brittle over time (slang, memes, shifts)?"):
+with st.expander(
+    "How do you keep the system from drifting or getting brittle over time (slang, memes, shifts)?"
+):
     st.write("""
 We treat this like a living system: evaluate routinely, watch for distribution shift, and use human-in-the-loop review to update lexicons/models when new patterns appear. The lifecycle includes explicit monitoring and testing for changes.
 """)
@@ -51,7 +55,6 @@ with st.expander("Can communities reuse this without heavy ML expertise?"):
     st.write("""
 Yes! Code and models are released with usage guidelines, and the interface ships with built-in visualizations so non-technical teams can explore results safely and meaningfully.
 """)
-
 
 
 st.subheader("🧠 For Mental Health Professionals")
@@ -75,7 +78,6 @@ mental health concerns.
 """)
 
 
-
 st.subheader("📬 Questions, Feedback, or Concerns")
 
 st.markdown("""
@@ -92,7 +94,5 @@ mental health professionals, and community organizations.
 """)
 
 st.link_button(
-    "💬 Submit Feedback",
-    "https://forms.gle/o7QQBZNijJo9E76E7",
-    use_container_width=True
+    "💬 Submit Feedback", "https://forms.gle/o7QQBZNijJo9E76E7", use_container_width=True
 )
