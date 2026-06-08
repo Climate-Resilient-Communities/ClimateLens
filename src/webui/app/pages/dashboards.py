@@ -1,89 +1,112 @@
-import streamlit as st
-import streamlit.components.v1 as components
+from pathlib import Path
 
-from utils import get_visualizations
+import streamlit as st
+from utils import get_visualizations, render_visualization
 
 st.title("📊 Dashboards")
 
 st.markdown("""
-This section lets you explore the conversations and feelings around climate anxiety.
+This section lets you explore the conversations and emotions surrounding climate anxiety.
 Think of it as moving from the headline to the full story.
 
-Use the Topics tab to see what people are talking about, and the Sentiments tab
-to understand how they feel.
+Use the **Topics** tab to see what people are discussing, and the **Emotions** tab
+to understand the emotional patterns behind those conversations.
 """)
 
-with st.expander("Introduction & Guide"):
+with st.expander("📖 Introduction & Guide"):
     st.write("""
-    This section lets you explore the conversations and feelings around climate anxiety.
+    This section lets you explore the conversations and emotions surrounding climate anxiety.
     Think of it as moving from the headline to the full story.
     """)
 
-with st.expander("Understanding the Data Visualization Tools"):
+with st.expander("🔍 Understanding the Data Visualization Tools"):
     st.write("""
     Each tool shows the same conversations from a different angle.
-    Some focus on what people discuss (topics), others on how they feel (sentiments).
-    Together, they offer a fuller picture.
+
+    Some focus on what people discuss (topics), while others focus on how people feel (emotions).
+
+    Together, they provide a richer understanding of climate-related conversations.
     """)
 
-with st.expander("How to Use This Dashboard"):
+with st.expander("🧭 How to Use This Dashboard"):
     st.write("""
-    Start with the Barchart or Intertopic Map to see the main conversations.
+    Start with the Barchart or Intertopic Map to identify major themes.
 
-    Use the Heatmap and Hierarchy to explore connections and branches.
+    Use Heatmaps and Hierarchies to explore relationships between topics.
 
-    Then open the Sentiments tab to check the feelings behind the words.
+    Then switch to the Emotions tab to understand the emotional signals associated
+    with those conversations.
+
+    You don't need to explore everything—follow your curiosity.
     """)
 
-topic_tab, sentiment_tab = st.tabs(
-    ["📊 Topics", "🎭 Sentiments"]
+## Main Tabs
+topic_tab, emotion_tab = st.tabs(
+    ["📊 Topics", "🎭 Emotions"]
 )
 
+## Topics
 with topic_tab:
 
-    files = get_visualizations("assets/topics/dtm")
-
-    selected_file = st.selectbox(
-        "Choose Visualization",
-        files,
-        format_func=lambda x: x.stem.replace("_", " ").title(),
-        key="topics"
+    topic_folders = sorted(
+        [f for f in Path("assets/topics").iterdir() if f.is_dir()]
     )
 
-    if selected_file.suffix in [".png", ".jpg", ".jpeg"]:
-        st.image(selected_file, use_container_width=True)
+    if not topic_folders:
+        st.warning("No topic visualization folders found.")
+    else:
 
-    elif selected_file.suffix == ".html":
-        with open(selected_file, encoding="utf-8") as f:
-            html = f.read()
-
-        components.html(
-            html,
-            height=900,
-            scrolling=True
+        selected_folder = st.selectbox(
+            "Visualization Type",
+            topic_folders,
+            format_func=lambda x: x.name.replace("_", " ").title(),
+            key="topic_folder"
         )
-'''
-with sentiment_tab:
 
-    files = get_visualizations("assets/sentiments")
+        files = get_visualizations(selected_folder)
 
-    selected_file = st.selectbox(
-        "Choose Visualization",
-        files,
-        format_func=lambda x: x.stem.replace("_", " ").title(),
-        key="sentiments"
+        if not files:
+            st.warning("No visualizations found in this folder.")
+        else:
+
+            selected_file = st.selectbox(
+                "Visualization",
+                files,
+                format_func=lambda x: x.stem.replace("_", " ").title(),
+                key="topic_file"
+            )
+
+            render_visualization(selected_file)
+
+## Emotions
+with emotion_tab:
+
+    emotion_folders = sorted(
+        [f for f in Path("assets/emotions").iterdir() if f.is_dir()]
     )
 
-    if selected_file.suffix in [".png", ".jpg", ".jpeg"]:
-        st.image(selected_file, use_container_width=True)
+    if not emotion_folders:
+        st.warning("No emotion visualization folders found.")
+    else:
 
-    elif selected_file.suffix == ".html":
-        with open(selected_file, encoding="utf-8") as f:
-            html = f.read()
-
-        components.html(
-            html,
-            height=900,
-            scrolling=True
+        selected_folder = st.selectbox(
+            "Visualization Type",
+            emotion_folders,
+            format_func=lambda x: x.name.replace("_", " ").title(),
+            key="emotion_folder"
         )
-        '''
+
+        files = get_visualizations(selected_folder)
+
+        if not files:
+            st.warning("No visualizations found in this folder.")
+        else:
+
+            selected_file = st.selectbox(
+                "Visualization",
+                files,
+                format_func=lambda x: x.stem.replace("_", " ").title(),
+                key="emotion_file"
+            )
+
+            render_visualization(selected_file)
