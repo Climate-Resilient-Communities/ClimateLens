@@ -1,6 +1,10 @@
 import streamlit as st
 
-st.set_page_config(page_title="ClimateLens", page_icon="🌍", layout="wide")
+st.set_page_config(
+page_title="ClimateLens",
+page_icon="🌍",
+layout="wide"
+)
 
 st.title("🌍 ClimateLens")
 st.caption("Understanding climate-related emotions through social media analysis")
@@ -64,7 +68,7 @@ ClimateLens is **not** a clinical assessment tool and should not be used to:
   """)
 
 st.caption(
-    "ClimateLens is an open-source research project focused on climate-related emotions and wellbeing."
+"ClimateLens is an open-source research project focused on climate-related emotions and wellbeing."
 )
 
 st.caption("Last updated: June 2026")
