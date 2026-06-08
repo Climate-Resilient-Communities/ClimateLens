@@ -40,3 +40,8 @@ view = st.selectbox(
         "Hierarchy"
     ]
 )
+
+about_tab, disclaimer_tab = st.tabs([
+    "About",
+    "Disclaimer"
+    ])
