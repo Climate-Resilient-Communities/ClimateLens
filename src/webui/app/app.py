@@ -1,15 +1,50 @@
 import streamlit as st
 
-st.set_page_config(
-    page_title="ClimateLens",
-    page_icon="🌍",
-    layout="wide"
+## Page Setup
+home_page = st.Page(
+    page="pages/home.py",
+    title="Home Page",
+    icon="🌍",
+    default=True
 )
 
-st.title("🌍 ClimateLens")
+insights_page = st.Page(
+    page="pages/insights.py",
+    title="Key Insights",
+    icon=":material/account_circle:"
+)
 
-st.markdown("""
-Understanding climate-related emotions through social media analysis.
+dashboards_page = st.Page(
+    page="pages/dashboards.py",
+    title="Dashboards",
+    icon=":material/account_circle:"
+)
 
-Use the sidebar to navigate through the platform.
-""")
+faq_page = st.Page(
+    page="pages/FAQ.py",
+    title="Support/FAQ",
+    icon=":material/account_circle:"
+)
+
+disclaimer_page = st.Page(
+    page="pages/disclaimer.py",
+    title="Disclaimer",
+    icon=":material/account_circle:"
+)
+
+terms_page = st.Page(
+    page="pages/terms.py",
+    title="Terms of Use",
+    icon=":material/account_circle:"
+)
+
+## Navigation Setup
+pg = st.navigation({
+    "Main": [home_page, insights_page, dashboards_page],
+    "Help & Legal": [faq_page, disclaimer_page, terms_page]
+})
+
+st.logo("assets/dummy-logo.png")
+st.sidebar.text("Made with ❤️ by the ClimateLens Team")
+
+pg.run()
