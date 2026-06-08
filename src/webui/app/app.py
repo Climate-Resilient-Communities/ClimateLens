@@ -4,38 +4,38 @@ import streamlit as st
 home_page = st.Page(
     page="pages/home.py",
     title="Home Page",
-    icon="🌍",
+    icon=":material/globe:",
     default=True
 )
 
 insights_page = st.Page(
     page="pages/insights.py",
     title="Key Insights",
-    icon=":material/account_circle:"
+    icon=":material/search_insights:"
 )
 
 dashboards_page = st.Page(
     page="pages/dashboards.py",
     title="Dashboards",
-    icon=":material/account_circle:"
+    icon=":material/analytics:"
 )
 
 faq_page = st.Page(
     page="pages/FAQ.py",
     title="Support/FAQ",
-    icon=":material/account_circle:"
+    icon=":material/help:"
 )
 
 disclaimer_page = st.Page(
     page="pages/disclaimer.py",
     title="Disclaimer",
-    icon=":material/account_circle:"
+    icon=":material/warning:"
 )
 
 terms_page = st.Page(
     page="pages/terms.py",
     title="Terms of Use",
-    icon=":material/account_circle:"
+    icon=":material/policy:"
 )
 
 ## Navigation Setup
