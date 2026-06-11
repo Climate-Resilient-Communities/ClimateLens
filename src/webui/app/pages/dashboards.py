@@ -41,31 +41,23 @@ with st.expander("🧭 How to Use This Dashboard"):
     """)
 
 ## Main Tabs
-topic_tab, emotion_tab = st.tabs(
-    ["📊 Topics", "🎭 Emotions"]
-)
+topic_tab, emotion_tab = st.tabs(["📊 Topics", "🎭 Emotions"])
 
 ## Topics
 with topic_tab:
-
-    try: # works on HF
-        topic_folders = sorted(
-        [f for f in Path("src/assets/topics").iterdir() if f.is_dir()]
-    )
-    except Exception as e: # works locally
-        topic_folders = sorted(
-        [f for f in Path("assets/topics").iterdir() if f.is_dir()]
-    )
+    try:  # works on HF
+        topic_folders = sorted([f for f in Path("src/assets/topics").iterdir() if f.is_dir()])
+    except Exception as e:  # works locally
+        topic_folders = sorted([f for f in Path("assets/topics").iterdir() if f.is_dir()])
 
     if not topic_folders:
         st.warning("No topic visualization folders found.")
     else:
-
         selected_folder = st.selectbox(
             "Visualization Type",
             topic_folders,
             format_func=lambda x: x.name.replace("_", " ").title(),
-            key="topic_folder"
+            key="topic_folder",
         )
 
         files = get_visualizations(selected_folder)
@@ -73,36 +65,30 @@ with topic_tab:
         if not files:
             st.warning("No visualizations found in this folder.")
         else:
-
             selected_file = st.selectbox(
                 "Visualization",
                 files,
                 format_func=lambda x: x.stem.replace("_", " ").title(),
-                key="topic_file"
+                key="topic_file",
             )
 
             render_visualization(selected_file)
 
 ## Emotions
 with emotion_tab:
-    try: # works on HF
-        emotion_folders = sorted(
-        [f for f in Path("src/assets/emotions").iterdir() if f.is_dir()]
-    )
-    except Exception as e: # works locally
-        emotion_folders = sorted(
-        [f for f in Path("assets/emotions").iterdir() if f.is_dir()]
-    )
+    try:  # works on HF
+        emotion_folders = sorted([f for f in Path("src/assets/emotions").iterdir() if f.is_dir()])
+    except Exception as e:  # works locally
+        emotion_folders = sorted([f for f in Path("assets/emotions").iterdir() if f.is_dir()])
 
     if not emotion_folders:
         st.warning("No emotion visualization folders found.")
     else:
-
         selected_folder = st.selectbox(
             "Visualization Type",
             emotion_folders,
             format_func=lambda x: x.name.replace("_", " ").title(),
-            key="emotion_folder"
+            key="emotion_folder",
         )
 
         files = get_visualizations(selected_folder)
@@ -110,12 +96,11 @@ with emotion_tab:
         if not files:
             st.warning("No visualizations found in this folder.")
         else:
-
             selected_file = st.selectbox(
                 "Visualization",
                 files,
                 format_func=lambda x: x.stem.replace("_", " ").title(),
-                key="emotion_file"
+                key="emotion_file",
             )
 
             render_visualization(selected_file)
