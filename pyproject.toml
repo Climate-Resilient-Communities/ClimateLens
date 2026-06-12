@@ -1,32 +1,119 @@
-[build-system]
-requires = ["flit_core >=3.2,<4"]
-build-backend = "flit_core.buildapi"
+# ClimateLens project metadata + tooling configuration.
+#
+# The pipeline is distributed as standalone scripts under src/ rather than an
+# installed package, so this file is primarily used to configure formatters,
+# linters, and test runners. Removing the legacy flit/[project] block lets
+# `pip install -r requirements.txt` succeed without a package skeleton.
 
 [project]
-name = "khp_climate_anxiety"
-version = "0.0.1"
-description = "Detection of topics related to climate anxiety in youth"
-authors = [
-  { name = "Climate Resilient Communities" },
-]
-license = { file = "LICENSE" }
-readme = "README.md"
+name = "climatelens"
+version = "0.2.0"
+
 classifiers = [
-    "Programming Language :: Python :: 3",
-    "License :: OSI Approved :: MIT License"
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License"
 ]
-requires-python = "~=3.10"
+
+dependencies = [
+    # ML & NLP
+    "scikit-learn==1.5.1",
+    "torch==2.2.2",
+    "sentence-transformers==3.0.1",
+    "tokenizers==0.22.1",
+    "transformers==4.57.3",
+    "huggingface-hub==0.36.0",
+    "umap-learn==0.5.6",
+    "hdbscan==0.8.38.post1",
+    "bertopic==0.16.4",
+    "pynndescent==0.5.13",
+    "mlflow==2.14.3",
+    
+    # Data manipulation
+    "numpy==1.24.3",
+    "pandas==2.3.1",
+    "scipy==1.15.3",
+    "pyarrow>=14.0.0",
+    "python-dateutil>=2.8.2",
+    
+    # Configuration / I/O
+    "python-dotenv==1.1.0",
+    "pyyaml==6.0.2",
+    "regex",
+    "joblib",
+    "emoji==0.6.0",
+    "gensim==4.3.3",
+    "pyLDAvis>=3.4.0",
+    "nltk==3.9.0",
+    "spacy>=3.7.0,<4.0.0",
+    
+    # Visualization
+    "matplotlib==3.10.5",
+    "seaborn==0.13.2",
+    "plotly==6.3.0",
+    "kaleido==0.2.1",
+    "wordcloud==1.9.2",
+    "pillow==12.0.0",
+    "tqdm==4.67.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "black",
+    "ruff==0.6.9",
+    "pytest==8.3.3",
+    "mypy==1.20.0",
+    "mkdocs",
+]
 
 [tool.black]
 line-length = 99
-include = '\.pyi?$'
-exclude = '''
-/(
-    \.git
-  | \.venv
-)/
-'''
+target-version = ["py310"]
+
+[tool.ruff]
+line-length = 99
+target-version = "py310"
+extend-exclude = [
+    ".venv",
+]
+
+[tool.ruff.lint]
+# Conservative ruleset: syntax errors, undefined names, unused imports, and
+# obvious bugs - but nothing so opinionated it blocks day-to-day work.
+select = ["E", "F", "W", "I"]
+ignore = [
+    "E402",  # Module level import not at top of file
+    "E501",  # line length enforced by formatter
+    "E731",  # allow lambda assignments
+    "F841",  # Local variable is assigned to but never used
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["F401", "F811"]
 
 [tool.ruff.lint.isort]
-known_first_party = ["khp_climate_anxiety"]
-force_sort_within_sections = true
+known-first-party = ["climatelens"]
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = false
+warn_unused_configs = true
+ignore_missing_imports = true
+allow_untyped_defs = true
+allow_untyped_calls = true
+
+# Gradually tighten these as you annotate more
+check_untyped_defs = false
+disallow_any_unimported = false
+disallow_untyped_defs = false
+
+# Exclude problematic dirs
+exclude = [
+    "^build/",
+    "^dist/",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+addopts = "-ra"
+pythonpath = ["src"]

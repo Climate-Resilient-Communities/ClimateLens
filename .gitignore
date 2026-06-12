@@ -1,4 +1,45 @@
+# Secrets
 .env
+.env.*
+!.env.example
+
+# Python
 __pycache__/
 *.pyc
 *.pyo
+*.pyd
+*.egg-info/
+.eggs/
+build/
+dist/
+
+# Virtualenvs
+.venv/
+venv/
+env/
+
+# Tooling caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Pipeline artifacts
+outputs/
+code/models/
+code/visualizations/
+*.safetensors
+
+# HuggingFace / torch caches
+.cache/
+hf_cache/
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+.idea/
+*.swp
+*.swo

@@ -2,58 +2,77 @@
 # GLOBALS                                                                       #
 #################################################################################
 
-PROJECT_NAME = khp-climate-anxiety
+PROJECT_NAME = climatelens
 PYTHON_VERSION = 3.10
 PYTHON_INTERPRETER = python
 
-#################################################################################
-# COMMANDS                                                                      #
-#################################################################################
+## Create virtual environment
+.PHONY: create_environment
+create_environment:
+	$(PYTHON_INTERPRETER) -m venv .venv
+	@echo ">>> Virtual environment created."
+	@echo ">>> Activate with:"
+	@echo ">>> Windows: .venv\\Scripts\\activate"
+	@echo ">>> Mac/Linux: source .venv/bin/activate"
 
+## Install package
+.PHONY: install
+install:
+	$(PYTHON_INTERPRETER) -m pip install --upgrade pip
+	$(PYTHON_INTERPRETER) -m pip install -e .
 
-## Install Python Dependencies
-.PHONY: requirements
-requirements:
-	$(PYTHON_INTERPRETER) -m pip install -U pip
-	$(PYTHON_INTERPRETER) -m pip install -r requirements.txt
-	
+## Install package + dev tools
+.PHONY: install-dev
+install-dev:
+	$(PYTHON_INTERPRETER) -m pip install --upgrade pip
+	$(PYTHON_INTERPRETER) -m pip install -e .[dev]
 
+## Run linting
+.PHONY: lint
+lint:
+	ruff check .
 
+## Format code
+.PHONY: format
+format:
+	ruff check --fix .
+	black .
 
-## Delete all compiled Python files
+## Run tests
+.PHONY: test
+test:
+	pytest
+
+## Remove Python cache files
 .PHONY: clean
 clean:
 	find . -type f -name "*.py[co]" -delete
 	find . -type d -name "__pycache__" -delete
 
-## Lint using flake8 and black (use `make format` to do formatting)
+## Lint using ruff (lint + format check)
 .PHONY: lint
 lint:
-	flake8 khp_climate_anxiety
-	isort --check --diff --profile black khp_climate_anxiety
-	black --check --config pyproject.toml khp_climate_anxiety
+	ruff check src tests
+	ruff format --check src tests
 
-## Format source code with black
+## Auto-format source code with ruff
 .PHONY: format
 format:
-	black --config pyproject.toml khp_climate_anxiety
+	ruff check --fix src tests
+	ruff format src tests
 
+## Run the test suite
+.PHONY: test
+test:
+	pytest tests/ -v
 
-## Download Data from storage system
-.PHONY: sync_data_down
-sync_data_down:
-	az storage blob download-batch -s phase1/data/ \
-		-d data/
-	
-
-## Upload Data to storage system
-.PHONY: sync_data_up
-sync_data_up:
-	az storage blob upload-batch -d phase1/data/ \
-		-s data/
-	
-
-
+## Run the full pipeline locally (preprocessing -> topic modeling -> emotion)
+.PHONY: pipeline
+pipeline:
+	$(PYTHON_INTERPRETER) src/data_preprocessing.py
+	$(PYTHON_INTERPRETER) src/topic_modeling.py
+	$(PYTHON_INTERPRETER) src/emotion_classification.py
+	$(PYTHON_INTERPRETER) src/emotion_visualizations.py
 
 ## Set up python interpreter environment
 .PHONY: create_environment
@@ -62,14 +81,15 @@ create_environment:
 	conda create --name $(PROJECT_NAME) python=$(PYTHON_VERSION) -y
 	
 	@echo ">>> conda env created. Activate with:\nconda activate $(PROJECT_NAME)"
-	
-
 
 
 #################################################################################
 # PROJECT RULES                                                                 #
 #################################################################################
 
+## Project Setup Guidelines
+# The setup guide for cloning the repo, setting up the environment, and installing dependencies is detailed in the `README.md`.
+# Please refer to the `README.md` file for instructions on setting up the project locally.
 
 
 #################################################################################
@@ -88,4 +108,4 @@ endef
 export PRINT_HELP_PYSCRIPT
 
 help:
-	@python -c "${PRINT_HELP_PYSCRIPT}" < $(MAKEFILE_LIST)
+	@python -c "$$PRINT_HELP_PYSCRIPT" < $(MAKEFILE_LIST)
