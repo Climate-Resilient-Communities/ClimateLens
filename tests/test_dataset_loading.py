@@ -10,10 +10,7 @@ from src.climatelens.utils.process_datasets import process_datasets
 def test_loads_valid_csv_with_body_column(tmp_path):
     # Create a test file
     csv_file = tmp_path / "test_data.csv"
-    df = pd.DataFrame({
-        "body": ["Hello world", "Another post"],
-        "created_utc": [123456, 789012]
-    })
+    df = pd.DataFrame({"body": ["Hello world", "Another post"], "created_utc": [123456, 789012]})
     df.to_csv(csv_file, index=False)
 
     # Load it
@@ -23,6 +20,7 @@ def test_loads_valid_csv_with_body_column(tmp_path):
     assert len(dfs) == 1
     assert len(docs_dict["test_data"]) == 2
     assert docs_dict["test_data"][0] == "Hello world"
+
 
 # Test that files without body/text column are skipped
 def test_skips_file_with_wrong_column(tmp_path, capsys):
@@ -34,6 +32,7 @@ def test_skips_file_with_wrong_column(tmp_path, capsys):
     assert len(dfs) == 0
     captured = capsys.readouterr()
     assert "No ('body', 'text') column found" in captured.out
+
 
 # Test that multiple files are all loaded
 def test_handles_multiple_files(tmp_path):
