@@ -344,7 +344,40 @@ Topic modeling can be used to:
 * Explore differences between communities or platforms.
 * Provide structured input for downstream analysis.
 
-# 4. Emotion Classification
+# 4. Emotion Model Comparison
+
+The development comparison included several candidate emotion models.
+
+| Model ([HF Docs](https://huggingface.co/docs/transformers/v4.57.0/en/main_classes/pipelines#transformers.TextClassificationPipeline))                                                                                                        | Emotion labels | Performance                   | Strength                                                | Limitation                                                | Project-relevant notes                                                                      |
+| ------------------------------------------------------------------------------------------------------------ | -------------: | ----------------------------- | ------------------------------------------------------- | --------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| [`bert-emotion`](https://huggingface.co/boltuix/bert-emotion)                                                |             13 | ~90–95% accuracy              | Lightweight; fast inference                             | Smaller emotion taxonomy                                  | BERT-mini/micro architecture (~6M parameters); designed for real-time/offline use           |
+| [`roberta-base-go_emotions`](https://huggingface.co/SamLowe/roberta-base-go_emotions)                        |             28 | 47.4% accuracy; 45.0% F1      | Broad emotion coverage                                  | Poorer performance on rare emotions                       | Multi-label classification using GoEmotions; appropriate for social-media emotion detection |
+| [`modernbert-base-go-emotions`](https://huggingface.co/cirimus/modernbert-base-go-emotions)                  |             28 | 46.5% F1 default; 54.1% tuned | Modern architecture; improved F1 after threshold tuning | Generalization beyond Reddit may be limited               | Trained on GoEmotions/Reddit; threshold tuning is important for evaluation                  |
+| [`emotion-english-distilroberta-base`](https://huggingface.co/j-hartmann/emotion-english-distilroberta-base)                                                |             7 | 60% accuracy              | Lightweight; fast inference                             | Small emotion taxonomy                                  | ...           |
+| [`bertweet-base-sentiment-analysis`](https://huggingface.co/finiteautomata/bertweet-base-sentiment-analysis) |              — | —                             | Strong Twitter specialization                           | Sentiment-focused rather than full emotion classification | Fine-tuned on English tweets; useful as a Twitter-specific comparison model                 |                                                                                                               | 
+
+These figures should **not** be interpreted as a direct ranking because the models may have been evaluated using different datasets, metrics, thresholds, and evaluation procedures. Moreover, the evaluation setup/metric may not be directly comparable. The F1 scores are probably the more useful comparison for multi-label tasks.
+
+For ClimateLens, model selection is based primarily on dataset suitability and the project's configuration rather than simply choosing the model with the highest reported benchmark number.
+
+### Runtime considerations
+
+Emotion classification requires transformer inference for each document.
+
+Runtime is affected by:
+
+* Number of documents
+* Document length
+* Model size
+* Batch size
+* Hardware
+* Number of output labels
+
+The development benchmarks showed meaningful differences between models, with the lightweight BERT-based model being more suitable for low-latency applications and larger RoBERTa/ModernBERT models requiring greater computational resources.
+
+For large datasets, batching and GPU acceleration can substantially reduce total inference time.
+
+# 5. Emotion Classification
 
 ## `emotion_classification.py`
 
@@ -464,39 +497,6 @@ The large difference between accuracy and F1 demonstrates why accuracy should no
 * Generalization to other domains or platforms may be limited.
 * Larger models can increase inference cost.
 * It is not currently the default model used by the pipeline.
-
-# 5. Emotion Model Comparison
-
-The development comparison included several candidate emotion models.
-
-| Model ([HF Docs](https://huggingface.co/docs/transformers/v4.57.0/en/main_classes/pipelines#transformers.TextClassificationPipeline))                                                                                                        | Emotion labels | Performance                   | Strength                                                | Limitation                                                | Project-relevant notes                                                                      |
-| ------------------------------------------------------------------------------------------------------------ | -------------: | ----------------------------- | ------------------------------------------------------- | --------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| [`bert-emotion`](https://huggingface.co/boltuix/bert-emotion)                                                |             13 | ~90–95% accuracy              | Lightweight; fast inference                             | Smaller emotion taxonomy                                  | BERT-mini/micro architecture (~6M parameters); designed for real-time/offline use           |
-| [`roberta-base-go_emotions`](https://huggingface.co/SamLowe/roberta-base-go_emotions)                        |             28 | 47.4% accuracy; 45.0% F1      | Broad emotion coverage                                  | Poorer performance on rare emotions                       | Multi-label classification using GoEmotions; appropriate for social-media emotion detection |
-| [`modernbert-base-go-emotions`](https://huggingface.co/cirimus/modernbert-base-go-emotions)                  |             28 | 46.5% F1 default; 54.1% tuned | Modern architecture; improved F1 after threshold tuning | Generalization beyond Reddit may be limited               | Trained on GoEmotions/Reddit; threshold tuning is important for evaluation                  |
-| [`emotion-english-distilroberta-base`](https://huggingface.co/j-hartmann/emotion-english-distilroberta-base)                                                |             7 | 60% accuracy              | Lightweight; fast inference                             | Small emotion taxonomy                                  | ...           |
-| [`bertweet-base-sentiment-analysis`](https://huggingface.co/finiteautomata/bertweet-base-sentiment-analysis) |              — | —                             | Strong Twitter specialization                           | Sentiment-focused rather than full emotion classification | Fine-tuned on English tweets; useful as a Twitter-specific comparison model                 |                                                                                                               | 
-
-These figures should **not** be interpreted as a direct ranking because the models may have been evaluated using different datasets, metrics, thresholds, and evaluation procedures. Moreover, the evaluation setup/metric may not be directly comparable. The F1 scores are probably the more useful comparison for multi-label tasks.
-
-For ClimateLens, model selection is based primarily on dataset suitability and the project's configuration rather than simply choosing the model with the highest reported benchmark number.
-
-### Runtime considerations
-
-Emotion classification requires transformer inference for each document.
-
-Runtime is affected by:
-
-* Number of documents
-* Document length
-* Model size
-* Batch size
-* Hardware
-* Number of output labels
-
-The development benchmarks showed meaningful differences between models, with the lightweight BERT-based model being more suitable for low-latency applications and larger RoBERTa/ModernBERT models requiring greater computational resources.
-
-For large datasets, batching and GPU acceleration can substantially reduce total inference time.
 
 # 6. Postprocessing
 
