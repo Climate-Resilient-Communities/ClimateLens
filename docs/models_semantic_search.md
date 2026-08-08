@@ -1,5 +1,0 @@
-| Model ([Link](https://www.sbert.net/docs/sentence_transformer/pretrained_models.html#semantic-search-models)) | Performance | Speed \| Size | Initial thoughts | Time R \| T | Final thoughts |
-| ------------------------------------------------------------------------------------------------------------- | ----------- | ------------- | ---------------- | ----------- | -------------- |
-| multi-qa-mpnet-base-dot-v1                                                                                    | 66.76       | 2800          |                  |             |                |
-| multi-qa-distilbert-cos-v1                                                                                    | 65.98       | 4000          |                  |             |                |
-| multi-qa-MiniLM-L6-cos-v1                                                                                     | 64.33       | 14200         |                  |             |                |
