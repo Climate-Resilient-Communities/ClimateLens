@@ -44,8 +44,6 @@ At a high level, the pipeline:
 
 The pipeline is intentionally file-based: each stage reads from an input directory and writes its results to a separate output location or to a later-stage output directory.
 
-
-
 # 1. Data Preprocessing
 
 ## `data_preprocessing.py`
@@ -107,8 +105,6 @@ Preprocessing can significantly affect downstream topic and emotion quality. Agg
 
 The first run may also download the required NLTK corpora.
 
-
-
 # 2. Embeddings
 
 ## Sentence-transformer embeddings
@@ -125,31 +121,19 @@ This model provides a useful balance between semantic representation quality and
 
 ### Embedding model comparison
 
-Several sentence-transformer models were evaluated during development.
+Several sentence-transformer models were evaluated during development. Model Cards can be found on HuggingFace:
 
-| Model                                   | Dimensions |   Maximum input | Benchmark* | Relative considerations                                           | Project observations                                                                 |
-|  | : | --: | : | -- |  |
-| `all-mpnet-base-v2`                     |        768 | 384 word pieces |      69.57 | High quality but computationally expensive                        | Produced useful Reddit clusters but required refinement                              |
-| `all-distilroberta-v1`                  |        768 | 128 word pieces |      68.73 | Higher-dimensional representation with greater computational cost | Reasonable for Twitter; less effective for Reddit                                    |
-| `all-MiniLM-L12-v2`                     |        384 | 256 word pieces |      68.70 | Good balance of quality, speed, and model size                    | Good general-purpose choice; performed better for Reddit than `all-distilroberta-v1` |
-| `all-MiniLM-L6-v2`                      |        384 | 256 word pieces |      68.06 | Faster and smaller than L12                                       | Useful option when inference speed is more important                                 |
-| `paraphrase-multilingual-mpnet-base-v2` |        768 |      128 tokens |      65.83 | Large model with substantially higher resource requirements       | Potentially useful for multilingual data but comparatively expensive                 |
-| `paraphrase-multilingual-MiniLM-L12-v2` |        384 |      128 tokens |      64.25 | Smaller multilingual alternative                                  | Performed well on Twitter; useful for multilingual content                           |
-| `paraphrase-MiniLM-L3-v2`               |        384 |      128 tokens |      62.29 | Very small and fast                                               | Lower benchmark performance than the stronger MiniLM variants                        |
-| `distiluse-base-multilingual-cased-v1`  |        512 |      128 tokens |      61.30 | Supports multiple languages but has a larger representation       | Twitter clusters were reasonable; Reddit results were poor                           |
-| `paraphrase-albert-small-v2`            |          — |      100 tokens |      64.46 | Small model with a short input limit                              | Lower-cost alternative for constrained workloads                                     |
-
-| Model ([Link](https://www.sbert.net/docs/sentence_transformer/pretrained_models.html#original-models))                                                                                                            | Purpose                                                                                                       | Performance | Speed \| Size | Initial thoughts                                                                                        | Time R \| T                  | Final thoughts                                                                                                                                                    |
-| ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | ----------- | ------------- | ------------------------------------------------------------------------------------------------------- | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [all-mpnet-base-v2](https://huggingface.co/sentence-transformers/all-mpnet-base-v2)                                                                                                                               | sentence & short paragraph encoder, max input text: 384 word pieces, 768 dimensions                           | 69.57       | 2800 \| 420   | Both; higher dimension for more complex text                                                            | 30.37 \| 21.47<br>207 \| 232 | Great for both, although very slow. I would mainly use for Reddit to capture nuances. Clustered were good, but needed refinement                                  |
-| [all-distilroberta-v1](https://huggingface.co/sentence-transformers/all-distilroberta-v1)                                                                                                                         | sentence & short paragraph encoder, max input text: 128 word pieces, 768 dimensions                           | 68.73       | 4000 \| 290   | Twitter; good performance, kinda slow                                                                   | 14.54 \| 10.50<br>5 \| 230   | Bad for reddit; okay for twitter but high-dimensional. clustered looked good, but needs refinement                                                                |
-| [all-MiniLM-L12-v2](https://huggingface.co/sentence-transformers/all-MiniLM-L12-v2)                                                                                                                               | sentence & short paragraph encoder, max input text: 256 word pieces, 384 dimensions                           | 68.7        | 7500 \| 120   | Twitter; compare to all-distilroberta-v1                                                                | 8.42 \| 6.20<br>255 \| 205   | better for reddit than distilroberta; okay for twitter (couldn't tell if clusters were better)                                                                    |
-| [all-MiniLM-L6-v2](https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2)                                                                                                                                 | sentence & short paragraph encoder, max input text: 256 word pieces, 384 dimensions                           | 68.06       | 14200 \| 80   | Twitter; test with L12 and check times, the "better" one can be compared to all-distilroberta-v1        |                              |                                                                                                                                                                   |
-| [paraphrase-multilingual-mpnet-base-v2](https://huggingface.co/sentence-transformers/paraphrase-multilingual-mpnet-base-v2)                                                                                       | clustering, 768 dimensions, student model is xlm-roberta-base (50+ languages), 'max_seq_length': 128 (tokens) | 65.83       | 2500 \| 970   | size way too large, this will be very slow                                                              |                              |                                                                                                                                                                   |
-| [](https://huggingface.co/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2)[paraphrase-multilingual-MiniLM-L12-v2](https://huggingface.co/sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2) | clustering, 384 dimensions, 50+ languages, 'max_seq_length': 128 (tokens)                                     | 64.25       | 7500 \| 420   | Both; compared to distiluse-base-multilingual-cased-v1, lower dimensional but both have 128 token limit | 8.87 \| 6.12<br>211 \| 249   | good for twitter, although one cluster still had german or dutch; reddit cluster representations look good, but reddit didn't have many language clusters anyways |
-| [](https://huggingface.co/sentence-transformers/paraphrase-MiniLM-L3-v2)[paraphrase-MiniLM-L3-v2](https://huggingface.co/sentence-transformers/paraphrase-MiniLM-L3-v2)                                           | clustering, 384 dimensions, 'max_seq_length': 128 (tokens)                                                    | 62.29       | 19000 \| 61   | worse version of all-MiniLM-L6-v2                                                                       |                              |                                                                                                                                                                   |
-| [](https://huggingface.co/sentence-transformers/distiluse-base-multilingual-cased-v1)[distiluse-base-multilingual-cased-v1](https://huggingface.co/sentence-transformers/distiluse-base-multilingual-cased-v1)    | max_seq_length': 128, 'in_features': 768, 'out_features': 512, 15 languages                                   | 61.3        | 4000 \| 480   | Both; high-dimensional                                                                                  | 15 \| 10.32<br>2 \| 236      | reddit was terrible; twitter clusters looked okay, but nothing new besides cluster 26 which had english and spanish terms                                         |
-| paraphrase-albert-small-v2                                                                                                                                                                                        | clustering, 'max_seq_length': 100 (tokens)                                                                    | 64.46       | 5000          |                                                                                                         |                              |                                                                                                                                                                   |
+| [Model](https://www.sbert.net/docs/sentence_transformer/pretrained_models.html#original-models) | Dimensions | Maximum input   | Benchmark* | Relative considerations                                           | Project observations                                                                 |
+| ----------------------------------------------------------------------------------------------- | ---------: | :-------------- | ---------: | :---------------------------------------------------------------- | :----------------------------------------------------------------------------------- |
+| `all-mpnet-base-v2`                                                                             |        768 | 384 word pieces |      69.57 | High quality but computationally expensive                        | Produced useful Reddit clusters but required refinement                              |
+| `all-distilroberta-v1`                                                                          |        768 | 128 word pieces |      68.73 | Higher-dimensional representation with greater computational cost | Reasonable for Twitter; less effective for Reddit                                    |
+| `all-MiniLM-L12-v2`                                                                             |        384 | 256 word pieces |      68.70 | Good balance of quality, speed, and model size                    | Good general-purpose choice; performed better for Reddit than `all-distilroberta-v1` |
+| `all-MiniLM-L6-v2`                                                                              |        384 | 256 word pieces |      68.06 | Faster and smaller than L12                                       | Useful option when inference speed is more important                                 |
+| `paraphrase-multilingual-mpnet-base-v2`                                                         |        768 | 128 tokens      |      65.83 | Large model with substantially higher resource requirements       | Potentially useful for multilingual data but comparatively expensive                 |
+| `paraphrase-multilingual-MiniLM-L12-v2`                                                         |        384 | 128 tokens      |      64.25 | Smaller multilingual alternative                                  | Performed well on Twitter; useful for multilingual content                           |
+| `paraphrase-MiniLM-L3-v2`                                                                       |        384 | 128 tokens      |      62.29 | Very small and fast                                               | Lower benchmark performance than the stronger MiniLM variants                        |
+| `distiluse-base-multilingual-cased-v1`                                                          |        512 | 128 tokens      |      61.30 | Supports multiple languages but has a larger representation       | Twitter clusters were reasonable; Reddit results were poor                           |
+| `paraphrase-albert-small-v2`                                                                    |          — | 100 tokens      |      64.46 | Small model with a short input limit                              | Lower-cost alternative for constrained workloads                                     |
 
 * Benchmark values above are model benchmark scores from the development comparison and should not be interpreted as direct measurements of final ClimateLens topic-modeling accuracy. Different models and benchmarks may use different datasets and evaluation procedures.
 
@@ -199,8 +183,6 @@ For large datasets, smaller models such as the MiniLM family can provide substan
 * Social-media slang, sarcasm, multilingual text, and domain-specific terminology can reduce embedding quality.
 * Different embedding models can produce noticeably different topic clusters.
 * Higher-dimensional models require more memory and computation.
-
-
 
 # 3. Topic Modeling
 
@@ -362,8 +344,6 @@ Topic modeling can be used to:
 * Explore differences between communities or platforms.
 * Provide structured input for downstream analysis.
 
-
-
 # 4. Emotion Classification
 
 ## `emotion_classification.py`
@@ -383,7 +363,7 @@ src/config/datasets.yaml
 The current profiles are:
 
 | Profile   | Model                              | Labels | Primary use                                            |
-|  | - | --: |  |
+| --------- | ---------------------------------- | -----: | ------------------------------------------------------ |
 | `twitter` | `boltuix/bert-emotion`             |     13 | Twitter/social-media emotion classification            |
 | `reddit`  | `SamLowe/roberta-base-go_emotions` |     28 | Reddit and broader social-media emotion classification |
 | `default` | `SamLowe/roberta-base-go_emotions` |     28 | General-purpose fallback                               |
@@ -426,8 +406,6 @@ The model documentation reports approximately 90–95% accuracy, although this f
 * A smaller model can miss subtle distinctions between related emotions.
 * Social-media sarcasm and implicit emotions remain difficult to classify.
 
-
-
 ## `SamLowe/roberta-base-go_emotions`
 
 This model is based on RoBERTa and is fine-tuned on the GoEmotions dataset.
@@ -458,8 +436,6 @@ Performance varies considerably between emotion categories. Common emotions gene
 * Data cleaning and domain differences can affect results.
 * Predictions may be less reliable for text that differs substantially from the training distribution.
 
-
-
 ## `cirimus/modernbert-base-go-emotions`
 
 A ModernBERT-based GoEmotions model was also evaluated during development.
@@ -489,19 +465,19 @@ The large difference between accuracy and F1 demonstrates why accuracy should no
 * Larger models can increase inference cost.
 * It is not currently the default model used by the pipeline.
 
-
-
 # 5. Emotion Model Comparison
 
 The development comparison included several candidate emotion models.
 
-| Model                         | Emotion labels | Reported performance                              | Main strength                | Main limitation                   |
-| -- | -: | - | - |  |
-| `bert-emotion`                |             13 | ~90–95% reported accuracy                         | Lightweight and fast         | Smaller emotion taxonomy          |
-| `roberta-base-go_emotions`    |             28 | 47.4% accuracy; 45.0% F1                          | Broad emotion coverage       | Rare emotions perform poorly      |
-| `modernbert-base-go-emotions` |             28 | 46.5% F1 at default threshold; 54.1% after tuning | Stronger modern architecture | Domain/generalization limitations |
+| Model ([HF Docs](https://huggingface.co/docs/transformers/v4.57.0/en/main_classes/pipelines#transformers.TextClassificationPipeline))                                                                                                        | Emotion labels | Performance                   | Strength                                                | Limitation                                                | Project-relevant notes                                                                      |
+| ------------------------------------------------------------------------------------------------------------ | -------------: | ----------------------------- | ------------------------------------------------------- | --------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| [`bert-emotion`](https://huggingface.co/boltuix/bert-emotion)                                                |             13 | ~90–95% accuracy              | Lightweight; fast inference                             | Smaller emotion taxonomy                                  | BERT-mini/micro architecture (~6M parameters); designed for real-time/offline use           |
+| [`roberta-base-go_emotions`](https://huggingface.co/SamLowe/roberta-base-go_emotions)                        |             28 | 47.4% accuracy; 45.0% F1      | Broad emotion coverage                                  | Poorer performance on rare emotions                       | Multi-label classification using GoEmotions; appropriate for social-media emotion detection |
+| [`modernbert-base-go-emotions`](https://huggingface.co/cirimus/modernbert-base-go-emotions)                  |             28 | 46.5% F1 default; 54.1% tuned | Modern architecture; improved F1 after threshold tuning | Generalization beyond Reddit may be limited               | Trained on GoEmotions/Reddit; threshold tuning is important for evaluation                  |
+| [`emotion-english-distilroberta-base`](https://huggingface.co/j-hartmann/emotion-english-distilroberta-base)                                                |             7 | 60% accuracy              | Lightweight; fast inference                             | Small emotion taxonomy                                  | ...           |
+| [`bertweet-base-sentiment-analysis`](https://huggingface.co/finiteautomata/bertweet-base-sentiment-analysis) |              — | —                             | Strong Twitter specialization                           | Sentiment-focused rather than full emotion classification | Fine-tuned on English tweets; useful as a Twitter-specific comparison model                 |                                                                                                               | 
 
-These figures should **not** be interpreted as a direct ranking because the models may have been evaluated using different datasets, metrics, thresholds, and evaluation procedures.
+These figures should **not** be interpreted as a direct ranking because the models may have been evaluated using different datasets, metrics, thresholds, and evaluation procedures. Moreover, the evaluation setup/metric may not be directly comparable. The F1 scores are probably the more useful comparison for multi-label tasks.
 
 For ClimateLens, model selection is based primarily on dataset suitability and the project's configuration rather than simply choosing the model with the highest reported benchmark number.
 
@@ -521,8 +497,6 @@ Runtime is affected by:
 The development benchmarks showed meaningful differences between models, with the lightweight BERT-based model being more suitable for low-latency applications and larger RoBERTa/ModernBERT models requiring greater computational resources.
 
 For large datasets, batching and GPU acceleration can substantially reduce total inference time.
-
-
 
 # 6. Postprocessing
 
@@ -582,8 +556,6 @@ Postprocessing is necessary to:
 * Create human-readable reports.
 * Avoid repeating expensive classification when labels are already available.
 
-
-
 # 7. Data Flow
 
 The complete pipeline can be summarized as follows:
@@ -634,8 +606,6 @@ The two major analytical branches are therefore:
 * **Emotion classification:** identifies how people are expressing emotion.
 
 These outputs can be analyzed independently or combined for more detailed analysis of emotional responses within individual topics.
-
-
 
 # 8. Performance and Scaling Considerations
 
@@ -704,8 +674,6 @@ For reproducible comparisons, benchmark results should always specify:
 * Number of documents
 * Whether inference was performed on CPU or GPU
 
-
-
 # 9. Model Strengths and Tradeoffs
 
 There is no single model that is optimal for every ClimateLens dataset.
@@ -768,8 +736,6 @@ Potential alternative for experiments requiring a more modern architecture.
 * Threshold tuning can improve F1
 * Greater domain/generalization considerations
 
-
-
 # 10. Key Limitations
 
 The pipeline's outputs should be treated as analytical signals rather than ground truth.
@@ -812,8 +778,6 @@ Although the pipeline uses seeded UMAP configuration, some components and model 
 
 For reproducible experiments, model versions, package versions, parameters, hardware, and dataset versions should be recorded.
 
-
-
 # 11. Use Cases
 
 The NLP pipeline can support several types of analysis.
@@ -841,8 +805,6 @@ Combine topic assignments with emotion labels to answer questions such as:
 ### Exploratory research
 
 Use topic clusters, emotion distributions, and visualizations to identify patterns that can later be investigated manually or with more specialized statistical methods.
-
-
 
 # 12. Outputs
 
@@ -889,8 +851,6 @@ OUTPUT_VIS_DIR/
 
 A summary HTML report is also generated by the emotion visualization stage.
 
-
-
 # 13. Configuration and Dataset Management
 
 Datasets are registered in:
@@ -917,8 +877,6 @@ To add a new dataset:
 6. Re-run the pipeline.
 
 The pipeline automatically discovers the new dataset through the registry.
-
-
 
 # 14. Running Locally
 
@@ -967,8 +925,6 @@ COHERE_API_KEY
 
 can be supplied when Cohere-based topic labeling is enabled.
 
-
-
 # 15. AzureML
 
 The pipeline can also be executed through AzureML using:
@@ -998,8 +954,6 @@ When running in AzureML, the pipeline writes its outputs under:
 ```
 
 rather than the default local directory structure.
-
-
 
 # Summary
 
