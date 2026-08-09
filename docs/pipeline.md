@@ -706,6 +706,31 @@ The most computationally expensive operations are generally:
 
 The exact runtime depends heavily on dataset size and hardware.
 
+### Benchmark availability
+
+Standardized end-to-end performance benchmarks for the ClimateLens NLP pipeline are **not currently available**.
+
+The runtime observations documented in this file come from development experiments and individual pipeline executions rather than a controlled benchmarking suite. Consequently, reported execution times should be treated as environment- and dataset-specific observations rather than general performance guarantees.
+
+Model-card metrics, such as accuracy and F1 scores, are likewise not direct measurements of ClimateLens performance because they may use different datasets, preprocessing procedures, thresholds, hardware, and evaluation protocols.
+
+A future benchmarking setup should report, at minimum:
+
+* Dataset name and number of documents.
+* Document-length characteristics.
+* Pipeline/model versions.
+* CPU/GPU hardware.
+* Batch sizes.
+* Execution time for each pipeline stage.
+* Peak memory usage.
+* Embedding generation time.
+* Topic-modeling time.
+* Emotion-classification time.
+* Relevant model-quality metrics.
+* Configuration and random seeds where applicable.
+
+Until such benchmarks are established, performance figures in this document should be interpreted as **development observations and model-specific reference metrics**, not standardized ClimateLens benchmarks.
+
 ### Embedding performance
 
 Embedding model choice has a direct effect on both runtime and memory consumption.
