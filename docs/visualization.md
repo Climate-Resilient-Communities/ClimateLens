@@ -160,3 +160,47 @@ be legible on mobile phones). Then it would be eligible on all devices.
 **Comments on the current visualization:** Can we show the
 interpretation from the charts? E.g. "[*people may be expressing worry
 without being strongly negative*"]{.mark}
+
+
+The pipeline's visualization stages convert model outputs into usable datasets and human-readable artifacts.
+
+## `emotion_visualizations.py`
+
+The visualization stage consumes emotion-classified CSV files from:
+
+```text
+OUTPUT_DATA_DIR
+```
+
+If the input already contains:
+
+```text
+emotion_label
+```
+
+the stage reuses the existing classifications instead of running the emotion model again.
+
+This avoids unnecessary duplicate inference.
+
+If emotion labels are not already present, the script falls back to:
+
+```text
+j-hartmann/emotion-english-distilroberta-base
+```
+
+and performs classification before generating the visualizations.
+
+### Outputs
+
+The visualization stage creates:
+
+```text
+OUTPUT_VIS_DIR/
+└── emotions/
+    ├── wordclouds/
+    └── timeseries/
+```
+
+as well as a summary HTML report.
+
+The visualizations provide a way to inspect the distribution and evolution of detected emotions.
