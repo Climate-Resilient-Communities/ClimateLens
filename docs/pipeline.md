@@ -107,6 +107,167 @@ The first run may also download the required NLTK corpora.
 
 # 2. Embeddings
 
+## `embeddings.py`
+
+### Purpose
+
+`embeddings.py` provides the embedding-generation stage used by the topic-modeling pipeline.
+
+The script converts cleaned documents into numerical sentence embeddings using the Sentence Transformers library. These embeddings provide the semantic representation subsequently used by the BERTopic workflow for dimensionality reduction, clustering, and topic discovery.
+
+The implementation currently uses:
+
+```text
+sentence-transformers/all-MiniLM-L12-v2
+```
+
+as the default embedding model.
+
+### Input
+
+The main function is:
+
+```python
+compute_embeddings(docs_dict)
+```
+
+It accepts a dictionary mapping dataset names to lists of cleaned documents:
+
+```text
+{
+    dataset_name: [document_1, document_2, ...]
+}
+```
+
+The documents are expected to have already passed through the preprocessing stage.
+
+For each registered dataset, the script generates an embedding for every document.
+
+### Processing
+
+The script loads the Sentence Transformer model and uses:
+
+```python
+embedding_model.encode(
+    docs,
+    batch_size=128,
+    show_progress_bar=True
+)
+```
+
+The current batch size is 128.
+
+The implementation also reuses the loaded model when multiple datasets use the same embedding model, avoiding unnecessary repeated model loading within a single execution.
+
+The resulting embeddings are stored as NumPy arrays.
+
+### Outputs
+
+The function returns two dictionaries:
+
+```text
+embeddings_dict
+embedding_models
+```
+
+`embeddings_dict` maps each dataset name to its embedding matrix:
+
+```text
+dataset → NumPy embedding array
+```
+
+`embedding_models` stores the loaded Sentence Transformer model instances.
+
+For `all-MiniLM-L12-v2`, each document is represented by a 384-dimensional vector.
+
+These embeddings are subsequently consumed by the topic-modeling stage.
+
+### Performance
+
+Embedding generation is one of the major computational stages of the NLP pipeline because every document must be passed through the transformer model.
+
+The current implementation uses a batch size of 128, although the practical batch size depends on available memory and hardware.
+
+Runtime is affected by:
+
+* Number of documents.
+* Document length.
+* Embedding model architecture.
+* Batch size.
+* CPU versus GPU execution.
+* Available system memory.
+* Sentence Transformers and PyTorch versions.
+
+Memory requirements are influenced by both the model itself and the generated embedding matrix. For `N` documents and an embedding dimension of `D`, the resulting embedding matrix contains approximately:
+
+```text
+N × D
+```
+
+floating-point values.
+
+For the current 384-dimensional model, the raw embedding matrix therefore requires approximately:
+
+```text
+N × 384 × sizeof(float)
+```
+
+bytes, excluding Python/NumPy object overhead and intermediate model memory.
+
+For example, using 32-bit floating-point values, the raw vectors alone require approximately 1.54 MB per 1,000 documents and 153.6 MB per 100,000 documents.
+
+These figures describe the stored embedding vectors only and should not be treated as total process memory requirements.
+
+### Model configuration
+
+The current implementation uses:
+
+```text
+sentence-transformers/all-MiniLM-L12-v2
+```
+
+as a single default model rather than selecting different embedding models for individual datasets.
+
+Alternative embedding models were evaluated during development, and their characteristics are documented in the embedding-model comparison below.
+
+### Strengths
+
+* Produces semantic representations rather than simple keyword counts.
+* Suitable for short social-media documents.
+* 384-dimensional embeddings reduce storage and downstream computational requirements relative to larger 768-dimensional models.
+* Batch processing improves inference efficiency.
+* The model is reused across datasets within the same execution.
+
+### Limitations
+
+* Embedding quality depends on the similarity between the model's training distribution and the ClimateLens data.
+* Social-media slang, abbreviations, sarcasm, multilingual text, and domain-specific terminology can reduce semantic quality.
+* Documents exceeding the model's effective input limit may lose information.
+* Generating embeddings for very large datasets can require substantial compute time and memory.
+* Different embedding models can produce different semantic neighborhoods and therefore different downstream topic clusters.
+
+### Benchmark availability
+
+The project currently does **not have standardized pipeline benchmarks** for `embeddings.py` or the NLP pipeline as a whole.
+
+Existing development observations and model-card benchmark values are useful for comparing model characteristics, but they were not produced under a single standardized ClimateLens benchmarking protocol.
+
+In particular, reported model benchmark scores should not be interpreted as direct measurements of ClimateLens embedding quality, topic-modeling accuracy, or end-to-end pipeline performance.
+
+Future standardized benchmarks should record at least:
+
+* Dataset and document count.
+* Document-length distribution.
+* Model version.
+* Hardware.
+* CPU/GPU configuration.
+* Batch size.
+* Embedding generation time.
+* Peak memory usage.
+* Total embedding storage size.
+
+This would allow meaningful comparisons between embedding models and pipeline configurations.
+
 ## Sentence-transformer embeddings
 
 Topic modeling uses sentence embeddings to convert text into numerical vectors representing semantic meaning.
