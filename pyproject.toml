@@ -31,7 +31,9 @@ dependencies = [
     # Data manipulation
     "numpy==1.24.3",
     "pandas==2.3.1",
-    "scipy==1.15.3",
+    # Capped by gensim 4.3.3, which requires scipy<1.14.0.
+    # Azure (env_bert.yml) pins 1.15.3 and has no gensim, so it isn't capped.
+    "scipy==1.13.1",
     "pyarrow>=14.0.0",
     "python-dateutil>=2.8.2",
     
