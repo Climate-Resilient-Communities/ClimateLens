@@ -1,13 +1,17 @@
 # ClimateLens project metadata + tooling configuration.
 #
-# The pipeline is distributed as standalone scripts under src/ rather than an
-# installed package, so this file is primarily used to configure formatters,
-# linters, and test runners. Removing the legacy flit/[project] block lets
-# `pip install -r requirements.txt` succeed without a package skeleton.
+# The package is installed from the src/ layout (`pip install -e .`), which is
+# what puts the `climatelens` and `config` import roots on sys.path. Heavy ML
+# and LDA dependencies live in optional extras so a base install stays light.
+
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "climatelens"
 version = "0.2.0"
+requires-python = ">=3.10"
 
 classifiers = [
   "Programming Language :: Python :: 3",
@@ -17,15 +21,6 @@ classifiers = [
 dependencies = [
     # ML & NLP
     "scikit-learn==1.5.1",
-    "torch==2.2.2",
-    "sentence-transformers==3.0.1",
-    "tokenizers==0.22.1",
-    "transformers==4.57.3",
-    "huggingface-hub==0.36.0",
-    "umap-learn==0.5.6",
-    "hdbscan==0.8.38.post1",
-    "bertopic==0.16.4",
-    "pynndescent==0.5.13",
     "mlflow==2.14.3",
     
     # Data manipulation
@@ -43,9 +38,6 @@ dependencies = [
     "regex",
     "joblib",
     "emoji==0.6.0",
-    "gensim==4.3.3",
-    "pyLDAvis>=3.4.0",
-    "nltk==3.9.0",
     "spacy>=3.7.0,<4.0.0",
     
     # Visualization
@@ -59,6 +51,26 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# Transformer / clustering stack. Needed by nlp_pipeline and the emotion stages.
+ml = [
+    "torch==2.2.2",
+    "sentence-transformers==3.0.1",
+    "tokenizers==0.22.1",
+    "transformers==4.57.3",
+    "huggingface-hub==0.36.0",
+    "umap-learn==0.5.6",
+    "hdbscan==0.8.38.post1",
+    "bertopic==0.16.4",
+    "pynndescent==0.5.13",
+]
+
+# Baseline LDA topic modeling (src/climatelens/models/LDA).
+lda = [
+    "gensim==4.3.3",
+    "pyLDAvis>=3.4.0",
+    "nltk==3.9.0",
+]
+
 dev = [
     "black",
     "ruff==0.6.9",
@@ -66,6 +78,17 @@ dev = [
     "mypy==1.20.0",
     "mkdocs",
 ]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+# Both are top-level import roots; the pipeline imports config.dataset_registry.
+# Neither has an __init__.py, so they are found as implicit namespace packages
+# (namespaces = true is the default). webui/ is intentionally excluded.
+include = ["climatelens*", "config*"]
+
+[tool.setuptools.package-data]
+# dataset_registry.DEFAULT_REGISTRY reads this at runtime.
+config = ["*.yaml"]
 
 [tool.black]
 line-length = 99
@@ -118,4 +141,3 @@ exclude = [
 testpaths = ["tests"]
 python_files = ["test_*.py"]
 addopts = "-ra"
-pythonpath = ["src"]
