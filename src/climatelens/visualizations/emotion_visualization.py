@@ -34,8 +34,9 @@ from wordcloud import WordCloud
 # Add src/ to sys.path so utils imports resolve when run as a script.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from utils.logging_config import get_logger  # noqa: E402
-from utils.runtime import load_runtime  # noqa: E402
+from climatelens.utils.io_helpers import sample_dataframe  # noqa: E402
+from climatelens.utils.logging_config import get_logger  # noqa: E402
+from climatelens.utils.runtime import load_runtime  # noqa: E402
 
 log = get_logger(__name__)
 
@@ -214,12 +215,19 @@ def validate_dataframe(df: pd.DataFrame, dataset_type: str, filename: str) -> Li
     return missing
 
 
-def load_datasets(file_paths: Dict[str, Path]) -> Dict[str, pd.DataFrame]:
+def load_datasets(
+    file_paths: Dict[str, Path],
+    *,
+    sample_size: Optional[int] = None,
+    seed: int = 42,
+) -> Dict[str, pd.DataFrame]:
     """
     Load and validate Twitter and Reddit datasets.
 
     Args:
         file_paths: Dictionary with 'twitter' and 'reddit' file paths
+        sample_size: If set, keep a seeded random sample of this many rows
+        seed: Seed used for that sample
 
     Returns:
         Dictionary with 'Twitter' and 'Reddit' DataFrames
@@ -233,6 +241,7 @@ def load_datasets(file_paths: Dict[str, Path]) -> Dict[str, pd.DataFrame]:
         print(f"  Loading {dataset_type.capitalize()}: {filepath.name}")
 
         df = pd.read_csv(filepath)
+        df = sample_dataframe(df, sample_size, seed)
 
         # Validate columns
         missing = validate_dataframe(df, dataset_type, filepath.name)
@@ -794,7 +803,7 @@ def create_summary_report(datasets: Dict[str, pd.DataFrame], output_dir: Path) -
 # =============================================================================
 
 
-def run_pipeline() -> None:
+def run_pipeline(*, sample_size: Optional[int] = None, seed: int = 42) -> None:
     """
     Execute the complete emotion visualization pipeline.
 
@@ -822,7 +831,7 @@ def run_pipeline() -> None:
     print("\n[2/5] Loading datasets...")
     try:
         file_paths = find_csv_files(env["data_dir"])
-        datasets = load_datasets(file_paths)
+        datasets = load_datasets(file_paths, sample_size=sample_size, seed=seed)
     except (FileNotFoundError, KeyError) as e:
         print(f"\nERROR: Error loading data: {e}")
         # return
