@@ -9,24 +9,7 @@ import pandas as pd
 from dotenv import load_dotenv
 
 
-def load_environment():
-    try:
-        from google.colab import drive
-
-        drive.mount("/content/drive")
-        base = "/content/drive/MyDrive/ClimateLens/02 Code/02.01 MVP2/"
-        env_path = Path(base) / "colab.env"
-    except ImportError:
-        env_path = Path(__file__).parent / ".env"
-
-    if not env_path.exists():
-        raise FileNotFoundError(env_path)
-
-    load_dotenv(env_path)
-    return os.getenv("DATA_DIR"), os.getenv("CODE_DIR")
-
-
-DATA_DIR, CODE_DIR = load_environment()
+DATA_DIR, CODE_DIR = load_dotenv()
 
 
 def load_docs(data_dir, text_cols=("body", "text")):
@@ -55,7 +38,7 @@ from sentence_transformers import SentenceTransformer
 from sklearn.feature_extraction.text import CountVectorizer
 from umap import UMAP
 
-EMBEDDING_MODELS = {
+EMBEDDING_MODELS = { # put this into a config file with all models, one for TM other for emotion analysis
     "minilm-L6": "sentence-transformers/all-MiniLM-L6-v2",  # fastest
     "minilm-L12": "sentence-transformers/all-MiniLM-L12-v2",  # fast
     # "distilroberta": "sentence-transformers/all-distilroberta-v1", #slow
@@ -100,8 +83,8 @@ BERTOPIC_GRID = {
 FIXED_PARAMS = {
     "nr_topics": "auto",
     "top_n_words": 10,
-    "ngram_range": (2, 3),
-}
+    "ngram_range": (2, 3), # can't add multiple tuples, can i add tuple of tuples?
+} # for ngram_range, can i just make a for loop to go through multiple? might be timely
 
 
 def run_experiment(
@@ -138,7 +121,7 @@ def run_experiment(
     # as mmr_value is used in the representation_model and not a direct BERTopic parameter.
     bertopic_params_for_bertopic = bertopic_params.copy()
     if "mmr_value" in bertopic_params_for_bertopic:
-        del bertopic_params_for_bertopic["mmr_value"]
+        del bertopic_params_for_bertopic["mmr_value"] # why is this here? might just remove
 
     topic_model = BERTopic(
         embedding_model=None,
@@ -313,3 +296,6 @@ def plot_barchart_from_results(
 
 fig = plot_barchart_from_results(results_df, model_selector=1)
 # display(fig) # uncomment if in jupyernotebook
+
+# need to look further into creating more visualizaitons, but light ones to see how the top 2 visualizations of all parameter combinations
+# need to determine what makes specific parameter combinations good for our use case
