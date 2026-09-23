@@ -34,8 +34,8 @@ from wordcloud import WordCloud
 # Add src/ to sys.path so utils imports resolve when run as a script.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from utils.logging_config import get_logger  # noqa: E402
-from utils.runtime import load_runtime  # noqa: E402
+from climatelens.utils.logging_config import get_logger  # noqa: E402
+from climatelens.utils.runtime import load_runtime  # noqa: E402
 
 log = get_logger(__name__)
 
