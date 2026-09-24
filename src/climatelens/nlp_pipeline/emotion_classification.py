@@ -23,7 +23,11 @@ from transformers import pipeline
 # Add src/ to sys.path so utils imports resolve when run as a script.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from climatelens.utils.io_helpers import drop_missing_text, safe_write_csv  # noqa: E402
+from climatelens.utils.io_helpers import (  # noqa: E402
+    drop_missing_text,
+    safe_write_csv,
+    sample_dataframe,
+)
 from climatelens.utils.logging_config import get_logger  # noqa: E402
 from climatelens.utils.runtime import load_runtime  # noqa: E402
 from config.dataset_registry import DatasetSpec, discover_datasets  # noqa: E402
@@ -129,9 +133,16 @@ def _pick_source_dir(runtime) -> Path:
     return runtime.data_dir
 
 
-def _process_one(spec: DatasetSpec, models: Dict[str, object]) -> Optional[pd.DataFrame]:
+def _process_one(
+    spec: DatasetSpec,
+    models: Dict[str, object],
+    *,
+    sample_size: Optional[int] = None,
+    seed: int = 42,
+) -> Optional[pd.DataFrame]:
     """Load, emotion-classify, and return a single dataset."""
     df = pd.read_csv(spec.path)
+    df = sample_dataframe(df, sample_size, seed)
     text_col = (
         spec.cleaned_text_column if spec.cleaned_text_column in df.columns else spec.text_column
     )
@@ -155,7 +166,7 @@ def _process_one(spec: DatasetSpec, models: Dict[str, object]) -> Optional[pd.Da
         return emotion_analysis(df, analyzer, text_col=text_col, multi=False)
 
 
-def run_emotion_pipeline() -> int:
+def run_emotion_pipeline(*, sample_size: Optional[int] = None, seed: int = 42) -> int:
     runtime = load_runtime()
     log.info("emotion classification starting")
     log.info("paths:\n%s", runtime.describe())
@@ -172,7 +183,7 @@ def run_emotion_pipeline() -> int:
     for spec in specs:
         log.info("analyzing %s (%s)", spec.name, spec.path.name)
         try:
-            df = _process_one(spec, models)
+            df = _process_one(spec, models, sample_size=sample_size, seed=seed)
         except Exception:
             log.exception("emotion analysis failed for %s", spec.name)
             continue

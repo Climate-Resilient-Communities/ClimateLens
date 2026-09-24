@@ -73,6 +73,27 @@ def safe_write_csv(df: pd.DataFrame, path: Path) -> Path:
     return path
 
 
+def sample_dataframe(df: pd.DataFrame, n: Optional[int], seed: int) -> pd.DataFrame:
+    """Return a seeded random sample of *n* rows, re-indexed from zero.
+
+    Sampling is random rather than a head slice: the Reddit export is ordered
+    oldest-first, so ``df.head(n)`` would return only the earliest rows and
+    silently break any time-based analysis downstream.
+
+    The index is reset because later stages concatenate positionally against a
+    fresh ``RangeIndex`` (see ``add_emotions_to_datasets``); a sparse index
+    from ``sample`` would align as a union and produce NaN rows instead.
+
+    ``n`` of ``None``, or one that is not smaller than the frame, returns *df*
+    unchanged.
+    """
+    if n is None or n >= len(df):
+        return df
+    sampled = df.sample(n=n, random_state=seed).reset_index(drop=True)
+    log.info("sampled %d of %d rows (seed=%d)", len(sampled), len(df), seed)
+    return sampled
+
+
 def discover_csvs(data_dir: Path, *, patterns: Iterable[str] = ("*.csv",)) -> List[Path]:
     """Return CSVs in *data_dir* matching any of the given glob patterns, sorted."""
     data_dir = Path(data_dir)
