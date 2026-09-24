@@ -20,7 +20,7 @@ bertopic = pytest.importorskip("bertopic", reason="heavy ML deps not installed")
 
 @pytest.fixture(scope="module")
 def tm():
-    return importlib.import_module("topic_modeling")
+    return importlib.import_module("climatelens.nlp_pipeline.topic_modeling")
 
 
 def test_select_params_prefers_explicit_profile(tm):
