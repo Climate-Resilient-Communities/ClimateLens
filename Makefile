@@ -1,72 +1,73 @@
+
 #################################################################################
-# GLOBALS                                                                       #
+# GLOBALS
 #################################################################################
 
 PROJECT_NAME = climatelens
 PYTHON_VERSION = 3.10
-PYTHON_INTERPRETER = python
+PYTHON_INTERPRETER = .venv/bin/python
+PIP = $(PYTHON_INTERPRETER) -m pip
 
-## Create virtual environment
+# Use the Windows virtual environment paths when running under Windows.
+ifeq ($(OS),Windows_NT)
+PYTHON_INTERPRETER = .venv/Scripts/python.exe
+endif
+
+.DEFAULT_GOAL := help
+
+#################################################################################
+# ENVIRONMENT AND INSTALLATION
+#################################################################################
+
 .PHONY: create_environment
 create_environment:
-	$(PYTHON_INTERPRETER) -m venv .venv
-	@echo ">>> Virtual environment created."
-	@echo ">>> Activate with:"
-	@echo ">>> Windows: .venv\\Scripts\\activate"
-	@echo ">>> Mac/Linux: source .venv/bin/activate"
+	python -m venv .venv
+	@echo "Virtual environment created."
+	@echo "Activate with: source .venv/bin/activate (Mac/Linux)"
+	@echo "Activate with: .venv\\Scripts\\activate (Windows)"
 
-## Install package
 .PHONY: install
 install:
-	$(PYTHON_INTERPRETER) -m pip install --upgrade pip
-	$(PYTHON_INTERPRETER) -m pip install -e .
+	$(PIP) install --upgrade pip
+	$(PIP) install -e .
 
-## Install package + dev tools
 .PHONY: install-dev
 install-dev:
-	$(PYTHON_INTERPRETER) -m pip install --upgrade pip
-	$(PYTHON_INTERPRETER) -m pip install -e .[dev]
+	$(PIP) install --upgrade pip
+	$(PIP) install -e ".[dev]"
 
-## Run linting
+.PHONY: install-ml
+install-dev:
+	$(PIP) install --upgrade pip
+	$(PIP) install -e ".[ml, dev]"
+
+.PHONY: install-lda
+install-dev:
+	$(PIP) install --upgrade pip
+	$(PIP) install -e ".[lda, dev]"
+
+#################################################################################
+# CODE QUALITY
+#################################################################################
+
 .PHONY: lint
 lint:
-	ruff check .
+	$(PYTHON_INTERPRETER) -m ruff check src tests
+	$(PYTHON_INTERPRETER) -m ruff format --check src tests
 
-## Format code
 .PHONY: format
 format:
-	ruff check --fix .
-	black .
+	$(PYTHON_INTERPRETER) -m ruff check --fix src tests
+	$(PYTHON_INTERPRETER) -m ruff format src tests
 
-## Run tests
+#################################################################################
+# TESTING AND PIPELINE
+#################################################################################
+
 .PHONY: test
 test:
-	pytest
+	$(PYTHON_INTERPRETER) -m pytest tests/ -v
 
-## Remove Python cache files
-.PHONY: clean
-clean:
-	find . -type f -name "*.py[co]" -delete
-	find . -type d -name "__pycache__" -delete
-
-## Lint using ruff (lint + format check)
-.PHONY: lint
-lint:
-	ruff check src tests
-	ruff format --check src tests
-
-## Auto-format source code with ruff
-.PHONY: format
-format:
-	ruff check --fix src tests
-	ruff format src tests
-
-## Run the test suite
-.PHONY: test
-test:
-	pytest tests/ -v
-
-## Run the full pipeline locally (preprocessing -> topic modeling -> emotion)
 .PHONY: pipeline
 pipeline:
 	$(PYTHON_INTERPRETER) src/data_preprocessing.py
@@ -74,38 +75,27 @@ pipeline:
 	$(PYTHON_INTERPRETER) src/emotion_classification.py
 	$(PYTHON_INTERPRETER) src/emotion_visualizations.py
 
-## Set up python interpreter environment
-.PHONY: create_environment
-create_environment:
-	
-	conda create --name $(PROJECT_NAME) python=$(PYTHON_VERSION) -y
-	
-	@echo ">>> conda env created. Activate with:\nconda activate $(PROJECT_NAME)"
-
-
 #################################################################################
-# PROJECT RULES                                                                 #
+# CLEANUP
 #################################################################################
 
-## Project Setup Guidelines
-# The setup guide for cloning the repo, setting up the environment, and installing dependencies is detailed in the `README.md`.
-# Please refer to the `README.md` file for instructions on setting up the project locally.
-
+.PHONY: clean
+clean:
+	find . -type f -name "*.py[co]" -delete
+	find . -type d -name "__pycache__" -delete
 
 #################################################################################
-# Self Documenting Commands                                                     #
+# HELP
 #################################################################################
 
-.DEFAULT_GOAL := help
-
-define PRINT_HELP_PYSCRIPT
-import re, sys; \
-lines = '\n'.join([line for line in sys.stdin]); \
-matches = re.findall(r'\n## (.*)\n[\s\S]+?\n([a-zA-Z_-]+):', lines); \
-print('Available rules:\n'); \
-print('\n'.join(['{:25}{}'.format(*reversed(match)) for match in matches]))
-endef
-export PRINT_HELP_PYSCRIPT
-
+.PHONY: help
 help:
-	@python -c "$$PRINT_HELP_PYSCRIPT" < $(MAKEFILE_LIST)
+	@echo "Available commands:"
+	@echo "  make create_environment  Create the virtual environment"
+	@echo "  make install             Install the package"
+	@echo "  make install-dev         Install development dependencies"
+	@echo "  make lint                Run lint and formatting checks"
+	@echo "  make format              Automatically format code"
+	@echo "  make test                Run tests"
+	@echo "  make pipeline            Run the full processing pipeline"
+	@echo "  make clean               Remove Python cache files"
