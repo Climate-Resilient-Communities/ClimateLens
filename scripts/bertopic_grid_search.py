@@ -9,10 +9,10 @@ Each CSV must contain a text column named "body" or "text".
 Results are saved as CSV files; fitted BERTopic objects are not serialized.
 """
 
+import logging
 import os
 import re
 import time
-import logging
 from datetime import datetime
 from itertools import product
 from pathlib import Path
@@ -153,9 +153,7 @@ def run_experiment(
         prediction_data=True,
         **hdbscan_params,
     )
-    representation_model = MaximalMarginalRelevance(
-        diversity=bertopic_params["mmr_value"]
-    )
+    representation_model = MaximalMarginalRelevance(diversity=bertopic_params["mmr_value"])
 
     bertopic_params_for_model = {
         key: value for key, value in bertopic_params.items() if key != "mmr_value"
@@ -222,7 +220,9 @@ def grid_search(docs_dict, output_dir=OUTPUT_DIR):
             docs = sample_docs(all_docs, limit)
             LOGGER.info(
                 "Dataset=%s | condition=%s | documents=%s",
-                dataset_name, size_label, len(docs),
+                dataset_name,
+                size_label,
+                len(docs),
             )
 
             for embedding_name, embedding_path in EMBEDDING_MODELS.items():
@@ -230,13 +230,15 @@ def grid_search(docs_dict, output_dir=OUTPUT_DIR):
                     embeddings = compute_embeddings(docs, embedding_path)
                 except Exception as exc:
                     LOGGER.exception("Embedding failed for %s / %s", dataset_name, embedding_name)
-                    errors.append({
-                        "dataset": dataset_name,
-                        "dataset_size_label": size_label,
-                        "embedding_model": embedding_name,
-                        "ngram_range": None,
-                        "error": repr(exc),
-                    })
+                    errors.append(
+                        {
+                            "dataset": dataset_name,
+                            "dataset_size_label": size_label,
+                            "embedding_model": embedding_name,
+                            "ngram_range": None,
+                            "error": repr(exc),
+                        }
+                    )
                     continue
 
                 for ngram_range in NGRAM_RANGES:
@@ -249,15 +251,23 @@ def grid_search(docs_dict, output_dir=OUTPUT_DIR):
 
                                 # Avoid configurations where the topic minimum is smaller
                                 # than the cluster minimum.
-                                if bertopic_params["min_topic_size"] < hdbscan_params["min_cluster_size"]:
+                                if (
+                                    bertopic_params["min_topic_size"]
+                                    < hdbscan_params["min_cluster_size"]
+                                ):
                                     continue
 
                                 try:
                                     LOGGER.info(
                                         "Running dataset=%s size=%s embedding=%s ngram=%s "
                                         "UMAP=%s HDBSCAN=%s BERTopic=%s",
-                                        dataset_name, size_label, embedding_name, ngram_range,
-                                        umap_params, hdbscan_params, bertopic_params,
+                                        dataset_name,
+                                        size_label,
+                                        embedding_name,
+                                        ngram_range,
+                                        umap_params,
+                                        hdbscan_params,
+                                        bertopic_params,
                                     )
                                     result, model = run_experiment(
                                         docs=docs,
@@ -276,18 +286,23 @@ def grid_search(docs_dict, output_dir=OUTPUT_DIR):
                                 except Exception as exc:
                                     LOGGER.exception(
                                         "Experiment failed: dataset=%s size=%s embedding=%s ngram=%s",
-                                        dataset_name, size_label, embedding_name, ngram_range,
+                                        dataset_name,
+                                        size_label,
+                                        embedding_name,
+                                        ngram_range,
                                     )
-                                    errors.append({
-                                        "dataset": dataset_name,
-                                        "dataset_size_label": size_label,
-                                        "embedding_model": embedding_name,
-                                        "ngram_range": str(ngram_range),
-                                        "umap_params": str(umap_params),
-                                        "hdbscan_params": str(hdbscan_params),
-                                        "bertopic_params": str(bertopic_params),
-                                        "error": repr(exc),
-                                    })
+                                    errors.append(
+                                        {
+                                            "dataset": dataset_name,
+                                            "dataset_size_label": size_label,
+                                            "embedding_model": embedding_name,
+                                            "ngram_range": str(ngram_range),
+                                            "umap_params": str(umap_params),
+                                            "hdbscan_params": str(hdbscan_params),
+                                            "bertopic_params": str(bertopic_params),
+                                            "error": repr(exc),
+                                        }
+                                    )
 
     results_df = pd.DataFrame(results)
     results_path = output_dir / f"bertopic_grid_results_{timestamp}.csv"
@@ -300,8 +315,13 @@ def grid_search(docs_dict, output_dir=OUTPUT_DIR):
         # One row per n-gram configuration and condition. Means summarize the
         # remaining parameter combinations; std shows sensitivity to the grid.
         group_columns = [
-            "dataset", "dataset_size_label", "n_documents", "embedding_model",
-            "ngram_min", "ngram_max", "ngram_range",
+            "dataset",
+            "dataset_size_label",
+            "n_documents",
+            "embedding_model",
+            "ngram_min",
+            "ngram_max",
+            "ngram_range",
         ]
         ablation_df = (
             results_df.groupby(group_columns, dropna=False)
@@ -313,9 +333,7 @@ def grid_search(docs_dict, output_dir=OUTPUT_DIR):
                 mean_runtime_sec=("runtime_sec", "mean"),
             )
             .reset_index()
-            .sort_values(
-                ["dataset", "dataset_size_label", "embedding_model", "mean_outlier_frac"]
-            )
+            .sort_values(["dataset", "dataset_size_label", "embedding_model", "mean_outlier_frac"])
         )
     else:
         ablation_df = pd.DataFrame()
@@ -329,9 +347,9 @@ def grid_search(docs_dict, output_dir=OUTPUT_DIR):
     if not results_df.empty:
         LOGGER.info(
             "Best candidates (lowest mean-independent outlier fraction, then most topics):\n%s",
-            results_df.sort_values(
-                ["outlier_frac", "n_topics"], ascending=[True, False]
-            ).head(10).to_string(index=False),
+            results_df.sort_values(["outlier_frac", "n_topics"], ascending=[True, False])
+            .head(10)
+            .to_string(index=False),
         )
     else:
         LOGGER.warning("No experiments completed successfully. Inspect %s", errors_path)
