@@ -6,7 +6,9 @@ from unittest.mock import MagicMock
 import pandas as pd
 import pytest
 
-import src.climatelens.nlp_pipeline.emotion_classification as em
+pytest.importorskip("torch")
+pytest.importorskip("transformers")
+em = pytest.importorskip("src.climatelens.nlp_pipeline.emotion_classification", reason="heavy ML deps not installed")
 
 
 @pytest.fixture
