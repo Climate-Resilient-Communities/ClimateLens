@@ -4,7 +4,7 @@
 #################################################################################
 
 PROJECT_NAME = climatelens
-PYTHON_VERSION = 3.10
+PYTHON_VERSION = 3.11
 PYTHON_INTERPRETER = .venv/bin/python
 PIP = $(PYTHON_INTERPRETER) -m pip
 
@@ -39,12 +39,12 @@ install-dev:
 .PHONY: install-ml
 install-dev:
 	$(PIP) install --upgrade pip
-	$(PIP) install -e ".[ml, dev]"
+	$(PIP) install -e ".[ml,dev]"
 
 .PHONY: install-lda
 install-dev:
 	$(PIP) install --upgrade pip
-	$(PIP) install -e ".[lda, dev]"
+	$(PIP) install -e ".[lda,dev]"
 
 #################################################################################
 # CODE QUALITY

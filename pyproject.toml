@@ -60,7 +60,7 @@ ml = [
     "transformers==4.57.3",
     "huggingface-hub==0.36.0",
     "umap-learn==0.5.6",
-    "hdbscan==0.8.38.post1",
+    "hdbscan==0.8.40",
     "bertopic==0.16.4",
     "pynndescent==0.5.13",
 ]
