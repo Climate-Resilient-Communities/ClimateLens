@@ -11,10 +11,10 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "climatelens"
 version = "0.2.0"
-requires-python = ">=3.10"
+requires-python = "==3.11.*"
 
 classifiers = [
-  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
   "License :: OSI Approved :: MIT License"
 ]
 
@@ -24,7 +24,7 @@ dependencies = [
     "mlflow==2.14.3",
     
     # Data manipulation
-    "numpy==1.24.3",
+    "numpy>=1.24.3",
     "pandas==2.3.1",
     # Capped by gensim 4.3.3, which requires scipy<1.14.0.
     # Azure (env_bert.yml) pins 1.15.3 and has no gensim, so it isn't capped.
@@ -46,7 +46,7 @@ dependencies = [
     "seaborn==0.13.2",
     "plotly==6.3.0",
     "kaleido==0.2.1",
-    "wordcloud==1.9.2",
+    "wordcloud>=1.9.2",
     "pillow==12.0.0",
     "tqdm==4.67.1",
 ]
@@ -73,7 +73,6 @@ lda = [
 ]
 
 dev = [
-    "black",
     "ruff==0.6.9",
     "pytest==8.3.3",
     "mypy==1.20.0",
