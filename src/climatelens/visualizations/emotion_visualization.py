@@ -50,6 +50,9 @@ warnings.filterwarnings("ignore")
 
 # Emotion model configuration
 EMOTION_MODEL_NAME = "j-hartmann/emotion-english-distilroberta-base"
+EMOTION_MODEL_REVISION = (
+    "eb638c8cb46dc3911880526b1d7f2f0e43da5180"  # Pin model to the same HF commit.
+)
 EMOTIONS = ["anger", "disgust", "fear", "joy", "neutral", "sadness", "surprise"]
 
 # Visualization settings
@@ -282,9 +285,16 @@ def load_emotion_model():
     print(f"  Using device: {device_name}")
 
     model = AutoModelForSequenceClassification.from_pretrained(
-        EMOTION_MODEL_NAME, use_safetensors=True
+        EMOTION_MODEL_NAME,
+        revision=EMOTION_MODEL_REVISION,
+        use_safetensors=True,
     )
-    tokenizer = AutoTokenizer.from_pretrained(EMOTION_MODEL_NAME)
+
+    tokenizer = AutoTokenizer.from_pretrained(
+        EMOTION_MODEL_NAME,
+        revision=EMOTION_MODEL_REVISION,
+    )
+
     emotion_classifier = pipeline(
         "text-classification",
         model=model,
