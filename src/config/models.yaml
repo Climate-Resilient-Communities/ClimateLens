@@ -1,0 +1,79 @@
+# ClimateLens Model Registry
+
+# Central registry for pretrained models used throughout the NLP pipeline.
+# All production model revisions should be pinned to immutable Hugging Face
+# Hub commit SHAs.
+
+# Fields:
+#   model_id: Hugging Face Hub repository identifier
+#   revision: Full, immutable commit SHA
+#   task: Model's intended NLP task
+#   loader: Python library/interface used to load the model
+#   config: Loader-specific configuration
+
+models:
+
+  # ============================================================
+  # TOPIC MODELING / EMBEDDINGS
+  # ============================================================
+
+  topic_embeddings_english:
+    model_id: "sentence-transformers/all-MiniLM-L12-v2"
+    revision: "a50ef00143b4d5391434df20ae11632588ac25be"
+    task: sentence-embedding
+    loader: sentence_transformers
+    config:
+      batch_size: 128
+      embedding_dimensions: 384
+      max_seq_length: 256
+
+  # ============================================================
+  # EMOTION CLASSIFICATION
+  # ============================================================
+
+  emotion_twitter_english:
+    model_id: "boltuix/bert-emotion"
+    revision: "a12a279c417b37ab5602cd22c3bdee80a378c4dd"
+    task: text-classification
+    loader: transformers
+    config:
+      use_safetensors: true
+      num_labels: 13
+
+  emotion_reddit_english:
+    model_id: "SamLowe/roberta-base-go_emotions"
+    revision: "d75048347613a25d77de8cf6412eaae9fa7b26be"
+    task: text-classification
+    loader: transformers
+    config:
+      use_safetensors: true
+      multi_label: true
+      num_labels: 28
+
+  # General English emotion model; retain only if used elsewhere
+  # or if selected for future experiments.
+  emotion_english_distilroberta:
+    model_id: "j-hartmann/emotion-english-distilroberta-base"
+    revision: "eb638c8cb46dc3911880526b1d7f2f0e43da5180"
+    task: text-classification
+    loader: transformers
+    config:
+      use_safetensors: true
+      num_labels: 7
+
+
+# ==============================================================
+# DATASET-TO-MODEL ASSIGNMENTS
+# ==============================================================
+
+assignments:
+
+  topic_modeling:
+    default: topic_embeddings_english
+    reddit: topic_embeddings_english
+    twitter: topic_embeddings_english
+
+  emotion:
+    default: emotion_reddit_english
+    reddit: emotion_reddit_english
+    twitter: emotion_twitter_english
