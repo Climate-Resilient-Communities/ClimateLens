@@ -47,6 +47,7 @@ def test_run_help_lists_options(runner):
     assert result.exit_code == 0
     assert "--sample-size" in result.output
     assert "--seed" in result.output
+    assert "--dry-run" in result.output
 
 
 def test_help_does_not_import_the_pipelines(runner, monkeypatch):
@@ -118,8 +119,8 @@ def test_sample_size_and_seed_are_passed_through(runner, pipelines):
     result = runner.invoke(cli_module.cli, ["run", "--sample-size", "250", "--seed", "7"])
 
     assert result.exit_code == 0
-    emotion.assert_called_once_with(sample_size=250, seed=7)
-    visualization.assert_called_once_with(sample_size=250, seed=7)
+    emotion.assert_called_once_with(sample_size=250, seed=7, dry_run=False)
+    visualization.assert_called_once_with(sample_size=250, seed=7, dry_run=False)
 
 
 def test_defaults_are_none_and_42(runner, pipelines):
@@ -128,8 +129,8 @@ def test_defaults_are_none_and_42(runner, pipelines):
     result = runner.invoke(cli_module.cli, ["run"])
 
     assert result.exit_code == 0
-    emotion.assert_called_once_with(sample_size=None, seed=42)
-    visualization.assert_called_once_with(sample_size=None, seed=42)
+    emotion.assert_called_once_with(sample_size=None, seed=42, dry_run=False)
+    visualization.assert_called_once_with(sample_size=None, seed=42, dry_run=False)
 
 
 def test_sample_size_must_be_positive(runner, pipelines):
@@ -148,3 +149,13 @@ def test_sample_size_must_be_an_integer(runner, pipelines):
 
     assert result.exit_code != 0
     emotion.assert_not_called()
+
+
+def test_dry_run_is_passed_through_to_both_pipelines(runner, pipelines):
+    emotion, visualization = pipelines
+
+    result = runner.invoke(cli_module.cli, ["run", "--dry-run", "--sample-size", "10"])
+
+    assert result.exit_code == 0
+    emotion.assert_called_once_with(sample_size=10, seed=42, dry_run=True)
+    visualization.assert_called_once_with(sample_size=10, seed=42, dry_run=True)

@@ -24,9 +24,9 @@ from transformers import pipeline
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from climatelens.utils.io_helpers import (  # noqa: E402
-    drop_missing_text,
+    drop_missing_then_sample,
+    safe_savefig,
     safe_write_csv,
-    sample_dataframe,
 )
 from climatelens.utils.logging_config import get_logger  # noqa: E402
 from climatelens.utils.runtime import load_runtime  # noqa: E402
@@ -142,7 +142,6 @@ def _process_one(
 ) -> Optional[pd.DataFrame]:
     """Load, emotion-classify, and return a single dataset."""
     df = pd.read_csv(spec.path)
-    df = sample_dataframe(df, sample_size, seed)
     text_col = (
         spec.cleaned_text_column if spec.cleaned_text_column in df.columns else spec.text_column
     )
@@ -156,7 +155,7 @@ def _process_one(
         )
         return None
 
-    df = drop_missing_text(df, text_col)
+    df = drop_missing_then_sample(df, text_col=text_col, n=sample_size, seed=seed)
     analyzer = choose_emotion_model(spec.emotion_profile, models)
 
     try:
@@ -166,8 +165,13 @@ def _process_one(
         return emotion_analysis(df, analyzer, text_col=text_col, multi=False)
 
 
-def run_emotion_pipeline(*, sample_size: Optional[int] = None, seed: int = 42) -> int:
-    runtime = load_runtime()
+def run_emotion_pipeline(
+    *,
+    sample_size: Optional[int] = None,
+    seed: int = 42,
+    dry_run: bool = False,
+) -> int:
+    runtime = load_runtime(ensure_dirs=not dry_run)
     log.info("emotion classification starting")
     log.info("paths:\n%s", runtime.describe())
 
@@ -192,15 +196,17 @@ def run_emotion_pipeline(*, sample_size: Optional[int] = None, seed: int = 42) -
 
         results[spec.name] = df
         out = runtime.output_data_dir / f"{spec.name}_with_emotions.csv"
-        safe_write_csv(df, out)
-        log.info("wrote %s", out)
+        safe_write_csv(df, out, dry_run=dry_run)
+        if not dry_run:
+            log.info("wrote %s", out)
 
     if not results:
         log.error("no datasets produced emotion output")
         return 1
 
     # Lightweight visual summary per dataset.
-    runtime.output_vis_dir.mkdir(parents=True, exist_ok=True)
+    if not dry_run:
+        runtime.output_vis_dir.mkdir(parents=True, exist_ok=True)
     try:
         import matplotlib.pyplot as plt
     except ImportError:
@@ -212,9 +218,10 @@ def run_emotion_pipeline(*, sample_size: Optional[int] = None, seed: int = 42) -
             try:
                 fig = df["emotion_label"].value_counts().plot(kind="bar").get_figure()
                 out = runtime.output_vis_dir / f"{name}_emotion_counts.png"
-                fig.savefig(out, dpi=200, bbox_inches="tight")
+                safe_savefig(fig, out, dry_run=dry_run, dpi=200, bbox_inches="tight")
                 fig.clf()
-                log.info("saved visualization: %s", out)
+                if not dry_run:
+                    log.info("saved visualization: %s", out)
             except Exception:
                 log.exception("visualization failed for %s", name)
     return 0
