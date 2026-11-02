@@ -46,9 +46,15 @@ def cli() -> None:
     type=int,
     default=42,
     show_default=True,
-    help="Seed for --sample-size.",
+    help="Seed for --sample-size and the word-cloud layouts.",
 )
-def run(sample_size: Optional[int], seed: int) -> None:
+@click.option(
+    "--dry-run",
+    is_flag=True,
+    default=False,
+    help="Run every computation but write nothing to disk; log each skipped write.",
+)
+def run(sample_size: Optional[int], seed: int, dry_run: bool) -> None:
     """
     Run emotion classification, then the emotion visualizations.
 
@@ -57,11 +63,11 @@ def run(sample_size: Optional[int], seed: int) -> None:
     """
     run_emotion_pipeline, run_visualization_pipeline = _load_pipelines()
 
-    status = run_emotion_pipeline(sample_size=sample_size, seed=seed)
+    status = run_emotion_pipeline(sample_size=sample_size, seed=seed, dry_run=dry_run)
     if status:
         raise SystemExit(status)
 
-    run_visualization_pipeline(sample_size=sample_size, seed=seed)
+    run_visualization_pipeline(sample_size=sample_size, seed=seed, dry_run=dry_run)
 
 
 if __name__ == "__main__":  # pragma: no cover
