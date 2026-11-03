@@ -1,15 +1,11 @@
-
-"""Load and validate pinned model definitions from the ClimateLens registry."""
+# Load and validate pinned model definitions from the ClimateLens registry.
 
 from pathlib import Path
 from typing import Any
 
 import yaml
 
-
-DEFAULT_REGISTRY = (
-    Path(__file__).resolve().parents[2] / "config" / "models.yaml"
-)
+DEFAULT_REGISTRY = Path(__file__).resolve().parents[2] / "config" / "models.yaml"
 
 SUPPORTED_LOADERS = {
     "transformers",
@@ -37,71 +33,48 @@ def load_registry(
     assignments = data.get("assignments", {})
 
     if not isinstance(models, dict) or not models:
-        raise ValueError(
-            "Model registry must contain a non-empty 'models' mapping."
-        )
+        raise ValueError("Model registry must contain a non-empty 'models' mapping.")
 
     if not isinstance(assignments, dict):
         raise ValueError("'assignments' must be a YAML mapping.")
 
     # Validate model definitions
     for name, config in models.items():
-
         if not isinstance(config, dict):
-            raise ValueError(
-                f"Model '{name}' must have a mapping configuration."
-            )
+            raise ValueError(f"Model '{name}' must have a mapping configuration.")
 
         for field in ("model_id", "revision", "task", "loader"):
             value = config.get(field)
 
             if not isinstance(value, str) or not value.strip():
-                raise ValueError(
-                    f"Model '{name}' must define a non-empty '{field}'."
-                )
+                raise ValueError(f"Model '{name}' must define a non-empty '{field}'.")
 
         # Validate immutable Hugging Face commit SHA
         revision = config["revision"]
 
-        if (
-            len(revision) != 40
-            or any(c not in "0123456789abcdefABCDEF" for c in revision)
-        ):
-            raise ValueError(
-                f"Model '{name}' revision must be a full "
-                "40-character commit SHA."
-            )
+        if len(revision) != 40 or any(c not in "0123456789abcdefABCDEF" for c in revision):
+            raise ValueError(f"Model '{name}' revision must be a full " "40-character commit SHA.")
 
         # Validate loading interface
         if config["loader"] not in SUPPORTED_LOADERS:
-            raise ValueError(
-                f"Model '{name}' has unsupported loader: "
-                f"{config['loader']}"
-            )
+            raise ValueError(f"Model '{name}' has unsupported loader: " f"{config['loader']}")
 
         # Validate configuration and metadata
         for field in ("config", "metadata"):
             value = config.get(field, {})
 
             if not isinstance(value, dict):
-                raise ValueError(
-                    f"Model '{name}' field '{field}' must be a mapping."
-                )
+                raise ValueError(f"Model '{name}' field '{field}' must be a mapping.")
 
     # Validate dataset-to-model assignments
     for task, dataset_assignments in assignments.items():
-
         if not isinstance(dataset_assignments, dict):
-            raise ValueError(
-                f"Assignment '{task}' must be a mapping."
-            )
+            raise ValueError(f"Assignment '{task}' must be a mapping.")
 
         for dataset, model_name in dataset_assignments.items():
-
             if model_name not in models:
                 raise ValueError(
-                    f"Assignment '{task}.{dataset}' references "
-                    f"unknown model '{model_name}'."
+                    f"Assignment '{task}.{dataset}' references " f"unknown model '{model_name}'."
                 )
 
     return {
@@ -129,9 +102,7 @@ def get_model_config(
     try:
         return registry["models"][model_name]
     except KeyError:
-        raise KeyError(
-            f"Model '{model_name}' not found in registry."
-        ) from None
+        raise KeyError(f"Model '{model_name}' not found in registry.") from None
 
 
 def resolve_model_assignment(

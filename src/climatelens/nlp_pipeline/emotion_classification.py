@@ -29,6 +29,7 @@ from climatelens.utils.io_helpers import (  # noqa: E402
     sample_dataframe,
 )
 from climatelens.utils.logging_config import get_logger  # noqa: E402
+from climatelens.utils.model_registry import load_registry, resolve_model_assignment
 from climatelens.utils.runtime import load_runtime  # noqa: E402
 from config.dataset_registry import DatasetSpec, discover_datasets  # noqa: E402
 
@@ -39,34 +40,58 @@ log = get_logger(__name__)
 # Model selection
 # =============================================================================
 
-_EMOTION_MODELS: Dict[str, str] = {
-    "twitter": "boltuix/bert-emotion",  # 13 labels
-    "reddit": "SamLowe/roberta-base-go_emotions",  # 28 labels
-    "default": "SamLowe/roberta-base-go_emotions",
-}
-
 
 def load_models(profiles: Iterable[str]) -> Dict[str, object]:
     """
-    Load each emotion model we'll need.
+    Load each emotion model required by the datasets.
 
-    ``profiles`` should be the ``emotion_profile`` field of each dataset being
-    processed; we load each profile's model exactly once.
+    Model IDs and revisions come from config/models.yaml.
+    Models shared by multiple profiles are loaded only once.
     """
     device = 0 if torch.cuda.is_available() else -1
 
-    models = {}
+    registry = load_registry()
+    loaded_models = {}
+    profile_models = {}
+
     for profile in sorted(set(profiles) | {"default"}):
-        model_name = _EMOTION_MODELS.get(profile, _EMOTION_MODELS["default"])
-        key = f"emotion_{profile}"
-        log.info("loading emotion model for profile=%s (%s)", profile, model_name)
-        models[key] = pipeline("text-classification", model=model_name, top_k=None, device=device)
-    return models
+        model_key = resolve_model_assignment(
+            task="emotion",
+            dataset=profile,
+            registry=registry,
+        )
+
+        if model_key not in loaded_models:
+            model_config = registry["models"][model_key]
+
+            model_id = model_config["model_id"]
+            revision = model_config["revision"]
+            config = model_config.get("config", {})
+
+            log.info(
+                "Loading emotion model: profile=%s, model=%s, revision=%s",
+                profile,
+                model_id,
+                revision,
+            )
+
+            loaded_models[model_key] = pipeline(
+                task=model_config["task"],
+                model=model_id,
+                revision=revision,
+                top_k=None,
+                device=device,
+                model_kwargs={"use_safetensors": config.get("use_safetensors", True)},
+            )
+
+        profile_models[profile] = loaded_models[model_key]
+
+    return profile_models
 
 
 def choose_emotion_model(profile: str, models: Dict[str, object]):
-    """Return the emotion pipeline registered for *profile* (or default)."""
-    return models.get(f"emotion_{profile}", models["emotion_default"])
+    # Return the emotion model assigned to a dataset profile
+    return models.get(profile, models["default"])
 
 
 # =============================================================================

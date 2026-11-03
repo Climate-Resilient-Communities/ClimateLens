@@ -4,6 +4,18 @@ import numpy as np
 from numpy.typing import NDArray
 from sentence_transformers import SentenceTransformer
 
+from climatelens.utils.model_registry import load_registry, resolve_model_assignment
+
+registry = load_registry()
+
+model_config = resolve_model_assignment(
+    task="topic_modeling",
+    dataset="reddit",
+    registry=registry,
+)
+
+embedding_model = SentenceTransformer(model_config["model_id"], revision=model_config["revision"])
+
 
 def compute_embeddings(
     docs_dict: Dict[str, List[str]],

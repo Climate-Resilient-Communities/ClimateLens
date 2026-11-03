@@ -36,7 +36,15 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from climatelens.utils.io_helpers import sample_dataframe  # noqa: E402
 from climatelens.utils.logging_config import get_logger  # noqa: E402
+from climatelens.utils.model_registry import load_model_registry
 from climatelens.utils.runtime import load_runtime  # noqa: E402
+
+models = load_model_registry()
+emotion_config = models["emotion_english"]
+
+model_id = emotion_config["model_id"]
+revision = emotion_config["revision"]
+model_options = emotion_config.get("config", {})
 
 log = get_logger(__name__)
 
@@ -285,14 +293,14 @@ def load_emotion_model():
     print(f"  Using device: {device_name}")
 
     model = AutoModelForSequenceClassification.from_pretrained(
-        EMOTION_MODEL_NAME,
-        revision=EMOTION_MODEL_REVISION,
-        use_safetensors=True,
+        model_id,
+        revision=revision,
+        **model_options,
     )
 
     tokenizer = AutoTokenizer.from_pretrained(
-        EMOTION_MODEL_NAME,
-        revision=EMOTION_MODEL_REVISION,
+        model_id,
+        revision=revision,
     )
 
     emotion_classifier = pipeline(
