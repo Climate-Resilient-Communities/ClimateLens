@@ -21,7 +21,7 @@ endif
 
 .PHONY: create_environment
 create_environment:
-	python -m venv .venv
+	python$(PYTHON_VERSION) -m venv .venv
 	@echo "Virtual environment created."
 	@echo "Activate with: source .venv/bin/activate (Mac/Linux)"
 	@echo "Activate with: .venv\\Scripts\\activate (Windows)"
@@ -37,12 +37,12 @@ install-dev:
 	$(PIP) install -e ".[dev]"
 
 .PHONY: install-ml
-install-dev:
+install-ml:
 	$(PIP) install --upgrade pip
 	$(PIP) install -e ".[ml,dev]"
 
 .PHONY: install-lda
-install-dev:
+install-lda:
 	$(PIP) install --upgrade pip
 	$(PIP) install -e ".[lda,dev]"
 
@@ -94,6 +94,8 @@ help:
 	@echo "  make create_environment  Create the virtual environment"
 	@echo "  make install             Install the package"
 	@echo "  make install-dev         Install development dependencies"
+	@echo "  make install-ml          Install ML pipeline + development dependencies"
+	@echo "  make install-lda         Install LDA + development dependencies"
 	@echo "  make lint                Run lint and formatting checks"
 	@echo "  make format              Automatically format code"
 	@echo "  make test                Run tests"

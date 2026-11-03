@@ -54,12 +54,12 @@ cd ClimateLens
 
 ## 2. Create a Python environment
 
-ClimateLens requires **Python 3.10**.
+ClimateLens requires **Python 3.11**.
 
 Using `venv`:
 
 ```bash
-python3.10 -m venv .venv
+python3.11 -m venv .venv
 source .venv/bin/activate
 ```
 
@@ -101,7 +101,7 @@ python -c "import tomllib; f=open('pyproject.toml','rb'); data=tomllib.load(f); 
 ## 4. Verify installation
 
 ```bash
-python -c "import climate_lens; print('ClimateLens installed successfully')"
+python -c "import climatelens; print('ClimateLens installed successfully')"
 ```
 
 # 🔐 Required Environment Variables

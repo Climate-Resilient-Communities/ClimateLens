@@ -95,11 +95,11 @@ config = ["*.yaml"]
 
 [tool.black]
 line-length = 99
-target-version = ["py310"]
+target-version = ["py311"]
 
 [tool.ruff]
 line-length = 99
-target-version = "py310"
+target-version = "py311"
 extend-exclude = [
     ".venv",
 ]
@@ -122,7 +122,7 @@ ignore = [
 known-first-party = ["climatelens"]
 
 [tool.mypy]
-python_version = "3.10"
+python_version = "3.11"
 warn_return_any = false
 warn_unused_configs = true
 ignore_missing_imports = true
