@@ -5,7 +5,7 @@ Small I/O and dataframe helpers shared across pipeline stages.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Iterable, List, Optional
+from typing import Any, Iterable, List, Optional
 
 import pandas as pd
 
@@ -65,11 +65,55 @@ def drop_missing_text(df: pd.DataFrame, text_col: str) -> pd.DataFrame:
     return df
 
 
-def safe_write_csv(df: pd.DataFrame, path: Path) -> Path:
-    """Write a CSV to *path*, creating parent directories as needed."""
+def _skip_write(path: Path, dry_run: bool) -> bool:
+    """Log and return ``True`` when *dry_run* says this write must not happen."""
+    if dry_run:
+        log.info("[dry-run] would write %s", path)
+    return dry_run
+
+
+def safe_write_csv(df: pd.DataFrame, path: Path, *, dry_run: bool = False) -> Path:
+    """Write a CSV to *path*, creating parent directories as needed.
+
+    With ``dry_run=True`` nothing is created -- neither the file nor its parent
+    directory -- and a single ``[dry-run] would write <path>`` line is logged.
+    The same contract holds for every ``safe_*`` writer below.
+    """
     path = Path(path)
+    if _skip_write(path, dry_run):
+        return path
     path.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(path, index=False)
+    return path
+
+
+def safe_savefig(fig: Any, path: Path, *, dry_run: bool = False, **savefig_kwargs: Any) -> Path:
+    """Save a matplotlib figure via ``fig.savefig(path, **savefig_kwargs)``."""
+    path = Path(path)
+    if _skip_write(path, dry_run):
+        return path
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fig.savefig(path, **savefig_kwargs)
+    return path
+
+
+def safe_write_html(fig: Any, path: Path, *, dry_run: bool = False) -> Path:
+    """Write a plotly figure via ``fig.write_html``."""
+    path = Path(path)
+    if _skip_write(path, dry_run):
+        return path
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fig.write_html(str(path))
+    return path
+
+
+def safe_write_text(text: str, path: Path, *, dry_run: bool = False) -> Path:
+    """Write *text* to *path* as UTF-8."""
+    path = Path(path)
+    if _skip_write(path, dry_run):
+        return path
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(text, encoding="utf-8")
     return path
 
 
@@ -92,6 +136,19 @@ def sample_dataframe(df: pd.DataFrame, n: Optional[int], seed: int) -> pd.DataFr
     sampled = df.sample(n=n, random_state=seed).reset_index(drop=True)
     log.info("sampled %d of %d rows (seed=%d)", len(sampled), len(df), seed)
     return sampled
+
+
+def drop_missing_then_sample(
+    df: pd.DataFrame, *, text_col: str, n: Optional[int], seed: int
+) -> pd.DataFrame:
+    """Drop rows with missing *text_col*, then take a seeded sample of *n*.
+
+    Dropping first means ``n`` is the number of usable rows returned: exactly
+    ``n``, or every remaining row if fewer than ``n`` survive the drop.
+    Sampling first and dropping afterwards would come out short.
+    """
+    df = drop_missing_text(df, text_col)
+    return sample_dataframe(df, n, seed)
 
 
 def discover_csvs(data_dir: Path, *, patterns: Iterable[str] = ("*.csv",)) -> List[Path]:

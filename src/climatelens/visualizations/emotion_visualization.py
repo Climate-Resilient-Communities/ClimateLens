@@ -34,7 +34,12 @@ from wordcloud import WordCloud
 # Add src/ to sys.path so utils imports resolve when run as a script.
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from climatelens.utils.io_helpers import sample_dataframe  # noqa: E402
+from climatelens.utils.io_helpers import (  # noqa: E402
+    safe_savefig,
+    safe_write_html,
+    safe_write_text,
+    sample_dataframe,
+)
 from climatelens.utils.logging_config import get_logger  # noqa: E402
 from climatelens.utils.model_registry import load_model_registry
 from climatelens.utils.runtime import load_runtime  # noqa: E402
@@ -93,7 +98,7 @@ REQUIRED_COLUMNS = {"twitter": ["created_at", "text"], "reddit": ["body", "creat
 # =============================================================================
 
 
-def load_environment() -> Dict[str, Path]:
+def load_environment(*, dry_run: bool = False) -> Dict[str, Path]:
     """
     Thin compatibility wrapper over :func:`utils.runtime.load_runtime`.
 
@@ -101,7 +106,7 @@ def load_environment() -> Dict[str, Path]:
     preferring the output_data_dir produced by emotion_classification.py)
     and ``output_dir`` (where visualizations should be written).
     """
-    runtime = load_runtime()
+    runtime = load_runtime(ensure_dirs=not dry_run)
     log.info("emotion visualizations starting")
     log.info("paths:\n%s", runtime.describe())
 
@@ -115,8 +120,25 @@ def load_environment() -> Dict[str, Path]:
         )
         data_dir = runtime.data_dir
 
-    data_dir.mkdir(parents=True, exist_ok=True)
-    runtime.output_vis_dir.mkdir(parents=True, exist_ok=True)
+    if dry_run:
+        # Classification wrote nothing this run, so whatever is read here was
+        # left on disk by an earlier run (or is raw data) -- not these results.
+        if data_dir == runtime.output_data_dir:
+            log.warning(
+                "[dry-run] reading existing emotion-classified CSVs from %s; these are "
+                "on-disk files from a previous run, NOT this run's classification results",
+                data_dir,
+            )
+        else:
+            log.warning(
+                "[dry-run] no classified CSVs on disk; reading raw data from %s and "
+                "classifying with this stage's own model -- NOT this run's "
+                "classification results",
+                data_dir,
+            )
+    else:
+        data_dir.mkdir(parents=True, exist_ok=True)
+        runtime.output_vis_dir.mkdir(parents=True, exist_ok=True)
 
     return {
         "data_dir": data_dir,
@@ -124,12 +146,13 @@ def load_environment() -> Dict[str, Path]:
     }
 
 
-def create_directories(base_output_dir: Path) -> Dict[str, Path]:
+def create_directories(base_output_dir: Path, *, dry_run: bool = False) -> Dict[str, Path]:
     """
     Create all necessary output directories.
 
     Args:
         base_output_dir: Base path for all outputs
+        dry_run: If True, return the paths without creating anything
 
     Returns:
         Dictionary mapping directory names to their paths
@@ -140,8 +163,9 @@ def create_directories(base_output_dir: Path) -> Dict[str, Path]:
         "timeseries": base_output_dir / "emotions" / "timeseries",
     }
 
-    for name, path in directories.items():
-        path.mkdir(parents=True, exist_ok=True)
+    if not dry_run:
+        for name, path in directories.items():
+            path.mkdir(parents=True, exist_ok=True)
 
     return directories
 
@@ -422,7 +446,7 @@ def add_emotions_to_datasets(
 
 
 def create_emotion_wordcloud(
-    texts: List[str], emotion: str, dataset_name: str
+    texts: List[str], emotion: str, dataset_name: str, *, seed: int = 42
 ) -> Optional[WordCloud]:
     """
     Create a word cloud for a specific emotion.
@@ -431,6 +455,7 @@ def create_emotion_wordcloud(
         texts: List of text strings for this emotion
         emotion: Name of the emotion
         dataset_name: Name of the dataset (for labeling)
+        seed: random_state for the word layout, so output is reproducible
 
     Returns:
         WordCloud object, or None if no text data
@@ -450,12 +475,15 @@ def create_emotion_wordcloud(
         max_words=100,
         relative_scaling=0.5,
         min_font_size=10,
+        random_state=seed,
     ).generate(combined_text)
 
     return wordcloud
 
 
-def save_wordcloud(wordcloud: WordCloud, title: str, filepath: Path) -> None:
+def save_wordcloud(
+    wordcloud: WordCloud, title: str, filepath: Path, *, dry_run: bool = False
+) -> None:
     """
     Save a word cloud to a PNG file.
 
@@ -470,12 +498,17 @@ def save_wordcloud(wordcloud: WordCloud, title: str, filepath: Path) -> None:
     ax.set_title(title, fontsize=16, fontweight="bold", pad=20)
 
     plt.tight_layout()
-    plt.savefig(filepath, dpi=150, bbox_inches="tight", facecolor="white")
+    safe_savefig(fig, filepath, dry_run=dry_run, dpi=150, bbox_inches="tight", facecolor="white")
     plt.close()
 
 
 def generate_wordclouds_for_dataset(
-    df: pd.DataFrame, dataset_name: str, output_dir: Path
+    df: pd.DataFrame,
+    dataset_name: str,
+    output_dir: Path,
+    *,
+    seed: int = 42,
+    dry_run: bool = False,
 ) -> List[str]:
     """
     Generate all word clouds for a single dataset.
@@ -488,6 +521,8 @@ def generate_wordclouds_for_dataset(
         df: DataFrame with 'cleaned_text' and 'emotion_label' columns
         dataset_name: Name of the dataset
         output_dir: Directory to save PNG files
+        seed: random_state for every word cloud layout
+        dry_run: If True, build the word clouds but write nothing
 
     Returns:
         List of saved filenames
@@ -502,7 +537,7 @@ def generate_wordclouds_for_dataset(
     for emotion in emotions:
         emotion_texts = df[df["emotion_label"] == emotion][text_col].fillna("").tolist()
 
-        wordcloud = create_emotion_wordcloud(emotion_texts, emotion, dataset_name)
+        wordcloud = create_emotion_wordcloud(emotion_texts, emotion, dataset_name, seed=seed)
 
         if wordcloud is None:
             print(f"    WARNING: Skipping {emotion} - no text data")
@@ -512,10 +547,11 @@ def generate_wordclouds_for_dataset(
         filepath = output_dir / filename
 
         title = f"{dataset_name} - {emotion.capitalize()} Emotion Word Cloud"
-        save_wordcloud(wordcloud, title, filepath)
+        save_wordcloud(wordcloud, title, filepath, dry_run=dry_run)
 
         saved_files.append(filename)
-        print(f"    Saved: {filename}")
+        if not dry_run:
+            print(f"    Saved: {filename}")
 
     # Create combined word cloud
     text_cols = ("body", "text")
@@ -532,16 +568,18 @@ def generate_wordclouds_for_dataset(
             max_words=150,
             relative_scaling=0.5,
             min_font_size=10,
+            random_state=seed,
         ).generate(combined_text)
 
         filename = f"{dataset_name.lower()}_all_emotions_wordcloud.png"
         filepath = output_dir / filename
 
         title = f"{dataset_name} - All Emotions Combined"
-        save_wordcloud(wordcloud_all, title, filepath)
+        save_wordcloud(wordcloud_all, title, filepath, dry_run=dry_run)
 
         saved_files.append(filename)
-        print(f"    Saved: {filename}")
+        if not dry_run:
+            print(f"    Saved: {filename}")
 
     return saved_files
 
@@ -581,7 +619,9 @@ def prepare_time_column(df: pd.DataFrame, dataset_name: str) -> Tuple[pd.DataFra
     return df_plot, time_format
 
 
-def create_emotion_timeseries(df: pd.DataFrame, dataset_name: str, output_dir: Path) -> List[str]:
+def create_emotion_timeseries(
+    df: pd.DataFrame, dataset_name: str, output_dir: Path, *, dry_run: bool = False
+) -> List[str]:
     """
     Create interactive time-series visualizations of emotion trends.
 
@@ -653,9 +693,10 @@ def create_emotion_timeseries(df: pd.DataFrame, dataset_name: str, output_dir: P
 
     filename_pct = f"{dataset_name.lower()}_emotion_timeseries.html"
     filepath_pct = output_dir / filename_pct
-    fig_pct.write_html(str(filepath_pct))
+    safe_write_html(fig_pct, filepath_pct, dry_run=dry_run)
     saved_files.append(filename_pct)
-    print(f"    Saved: {filename_pct}")
+    if not dry_run:
+        print(f"    Saved: {filename_pct}")
 
     # --- Stacked Count View ---
     fig_count = go.Figure()
@@ -698,9 +739,10 @@ def create_emotion_timeseries(df: pd.DataFrame, dataset_name: str, output_dir: P
 
     filename_count = f"{dataset_name.lower()}_emotion_timeseries_stacked.html"
     filepath_count = output_dir / filename_count
-    fig_count.write_html(str(filepath_count))
+    safe_write_html(fig_count, filepath_count, dry_run=dry_run)
     saved_files.append(filename_count)
-    print(f"    Saved: {filename_count}")
+    if not dry_run:
+        print(f"    Saved: {filename_count}")
 
     return saved_files
 
@@ -710,7 +752,9 @@ def create_emotion_timeseries(df: pd.DataFrame, dataset_name: str, output_dir: P
 # =============================================================================
 
 
-def create_summary_report(datasets: Dict[str, pd.DataFrame], output_dir: Path) -> str:
+def create_summary_report(
+    datasets: Dict[str, pd.DataFrame], output_dir: Path, *, dry_run: bool = False
+) -> str:
     """
     Create an HTML summary report of the emotion analysis.
 
@@ -810,8 +854,7 @@ def create_summary_report(datasets: Dict[str, pd.DataFrame], output_dir: Path) -
     """
 
     filepath = output_dir / "emotion_analysis_summary.html"
-    with open(filepath, "w", encoding="utf-8") as f:
-        f.write(html_content)
+    safe_write_text(html_content, filepath, dry_run=dry_run)
 
     return str(filepath)
 
@@ -821,7 +864,12 @@ def create_summary_report(datasets: Dict[str, pd.DataFrame], output_dir: Path) -
 # =============================================================================
 
 
-def run_pipeline(*, sample_size: Optional[int] = None, seed: int = 42) -> None:
+def run_pipeline(
+    *,
+    sample_size: Optional[int] = None,
+    seed: int = 42,
+    dry_run: bool = False,
+) -> None:
     """
     Execute the complete emotion visualization pipeline.
 
@@ -840,8 +888,8 @@ def run_pipeline(*, sample_size: Optional[int] = None, seed: int = 42) -> None:
 
     # Step 1: Environment setup
     print("\n[1/5] Setting up environment...")
-    env = load_environment()
-    directories = create_directories(env["output_dir"])
+    env = load_environment(dry_run=dry_run)
+    directories = create_directories(env["output_dir"], dry_run=dry_run)
     print(f"  Data directory: {env['data_dir']}")
     print(f"  Output directory: {env['output_dir']}")
 
@@ -877,7 +925,9 @@ def run_pipeline(*, sample_size: Optional[int] = None, seed: int = 42) -> None:
 
     for name, df in datasets.items():
         print(f"\n  Creating word clouds for {name}...")
-        files = generate_wordclouds_for_dataset(df, name, wordcloud_dir)
+        files = generate_wordclouds_for_dataset(
+            df, name, wordcloud_dir, seed=seed, dry_run=dry_run
+        )
         all_wordcloud_files.extend(files)
 
     print(f"  Generated {len(all_wordcloud_files)} word cloud files")
@@ -889,15 +939,16 @@ def run_pipeline(*, sample_size: Optional[int] = None, seed: int = 42) -> None:
 
     for name, df in datasets.items():
         print(f"\n  Creating time-series for {name}...")
-        files = create_emotion_timeseries(df, name, timeseries_dir)
+        files = create_emotion_timeseries(df, name, timeseries_dir, dry_run=dry_run)
         all_timeseries_files.extend(files)
 
     print(f"  Generated {len(all_timeseries_files)} time-series files")
 
     # Step 7: Create summary report
     print("\n[7/7] Creating summary report...")
-    summary_path = create_summary_report(datasets, directories["emotions"])
-    print(f"  Summary report saved: {summary_path}")
+    summary_path = create_summary_report(datasets, directories["emotions"], dry_run=dry_run)
+    if not dry_run:
+        print(f"  Summary report saved: {summary_path}")
 
     # Final summary
     print("\n" + "=" * 60)
